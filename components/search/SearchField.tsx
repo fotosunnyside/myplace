@@ -7,11 +7,12 @@ interface SearchFieldProps {
   className?: string
   size?: 'sm' | 'md' | 'lg'
   name?: string
+  defaultValue?: string
 }
 
-export function SearchField({ placeholder, className, size = 'md', name = 'q' }: SearchFieldProps) {
+export function SearchField({ placeholder, className, size = 'md', name = 'q', defaultValue }: SearchFieldProps) {
   return (
-    <form role="search" action={withBase('/explore')} className={cn('group relative', className)}>
+    <form role="search" action={withBase('/search/')} className={cn('group relative', className)}>
       <Search
         aria-hidden
         className={cn(
@@ -22,6 +23,7 @@ export function SearchField({ placeholder, className, size = 'md', name = 'q' }:
       <input
         type="search"
         name={name}
+        defaultValue={defaultValue}
         aria-label={placeholder.replace(/\.+$/, '')}
         placeholder={placeholder}
         className={cn(

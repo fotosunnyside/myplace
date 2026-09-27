@@ -64,26 +64,41 @@ export function ButtonLink({
 export function Avatar({
   src,
   alt,
+  name,
   size = 40,
   ring = false,
   className,
 }: {
-  src: string
+  src?: string
   alt: string
+  /** Used for initials when there is no photo. */
+  name?: string
   size?: number
   ring?: boolean
   className?: string
 }) {
+  const initials = (name ?? alt)
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
   return (
     <span
       className={cn(
-        'relative inline-block shrink-0 overflow-hidden rounded-full bg-sand',
+        'relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-aqua to-teal-deep font-semibold text-white',
         ring && 'ring-2 ring-white shadow-soft',
         className,
       )}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      aria-label={alt || undefined}
+      role={alt ? 'img' : undefined}
     >
-      <Image src={src} alt={alt} fill sizes={`${size * 2}px`} className="object-cover" />
+      {src ? (
+        <Image src={src} alt="" fill sizes={`${size * 2}px`} unoptimized={src.startsWith('data:')} className="object-cover" />
+      ) : (
+        <span aria-hidden>{initials || '·'}</span>
+      )}
     </span>
   )
 }

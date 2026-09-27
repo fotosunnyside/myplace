@@ -11,7 +11,7 @@ Usage: python3 tools/build-assets.py <upscaled-dir> <repo-root>
 When real illustration arrives, drop it into <upscaled-dir> with the same names
 (world.png at any 1286:764 multiple, etc.) and re-run this script.
 """
-import json, os, sys
+import json, os, re, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -164,9 +164,49 @@ for name, (x0, y0, x1, y1) in {
 }.items():
     save(base_clean.crop((x0 * SCALE, y0 * SCALE, x1 * SCALE, y1 * SCALE)), f'media/{name}.webp', q=84)
 save(Image.open(os.path.join(UP, 'card_mindplace.png')).convert('RGB'), 'media/learn-digital.webp', q=84)
+save(base_clean.crop((290 * SCALE, 270 * SCALE, 480 * SCALE, 400 * SCALE)), 'media/learn-garden.webp', q=84)
+save(Image.open(os.path.join(UP, 'card_marketplace.png')).convert('RGB'), 'media/learn-shop.webp', q=84)
+
+# PLACES Guide avatar: the logo mark on cream.
+g = Image.new('RGB', (512, 512), (255, 249, 239))
+gd = ImageDraw.Draw(g)
+k, ox, oy = 512 / 40 * 0.62, 512 * 0.19, 512 * 0.17
+P = lambda pts: [(ox + x * k, oy + y * k) for x, y in pts]
+gd.polygon(P([(3, 15), (20, 3), (20, 22)]), fill='#58C8C6')
+gd.polygon(P([(37, 15), (20, 3), (20, 22)]), fill='#12AAA8')
+gd.polygon(P([(3, 15), (20, 22), (20, 38)]), fill='#5E9E68')
+gd.polygon(P([(37, 15), (20, 22), (20, 38)]), fill='#23485A')
+save(g, 'media/avatar-guide.webp', q=90, size=(256, 256))
 
 mb = Image.open(os.path.join(UP, 'banner_mindplace.png')).convert('RGB')
 W, H = mb.size
-save(mb.crop((int(W * 0.66), int(H * 0.1), W, int(H * 0.95))), 'media/banner-mindplace-thumb.webp', q=82)
+save(mb.crop((int(W * 0.62), int(H * 0.05), W, H)), 'media/learn-writing.webp', q=84)
 
 print('done')
+
+# Dedicated course covers win over the crops above when provided (see docs/ARTWORK.md).
+for name in ['sustainable', 'digital', 'health', 'writing', 'garden', 'shop']:
+    f = os.path.join(UP, f'learn_{name}.png')
+    if os.path.exists(f):
+        save(Image.open(f).convert('RGB'), f'media/learn-{name}.webp', q=84, size=None)
+
+# ------------------------------------------------------------------ responsive variants
+# GitHub Pages has no image optimizer: pre-build smaller widths and let lib/image-loader pick one.
+VARIANT_WIDTHS = [480, 828, 1200, 1800]
+variants = {}
+for folder in ['world', 'districts', 'media']:
+    for f in sorted(os.listdir(os.path.join(PUB, folder))):
+        if not f.endswith('.webp') or re.search(r'\.w\d+\.webp$', f):
+            continue
+        path = os.path.join(PUB, folder, f)
+        im = Image.open(path)
+        widths = [w for w in VARIANT_WIDTHS if w < im.size[0] * 0.85]
+        if not widths:
+            continue
+        for w in widths:
+            h = round(im.size[1] * w / im.size[0])
+            im.resize((w, h), Image.LANCZOS).save(path.replace('.webp', f'.w{w}.webp'), 'WEBP', quality=82, method=6)
+        variants[f'/{folder}/{f}'] = widths + [im.size[0]]
+with open(os.path.join(ROOT, 'lib', 'image-variants.json'), 'w') as fh:
+    json.dump(variants, fh, indent=1, sort_keys=True)
+print(f'{len(variants)} images with responsive variants')

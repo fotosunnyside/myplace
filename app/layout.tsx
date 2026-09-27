@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Newsreader } from 'next/font/google'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { MobileTabBar, MobileTopBar } from '@/components/layout/MobileChrome'
+import { AppProviders } from '@/components/app/AppProviders'
+import { Analytics } from '@/components/app/Analytics'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import './globals.css'
 
 const newsreader = Newsreader({
@@ -18,13 +21,20 @@ const dmSans = DM_Sans({
   display: 'swap',
 })
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+const description =
+  'PLACES turns the internet into an explorable world: YourPlace, MindPlace, MarketPlace and WorkPlace — one identity, four Places, one connected world.'
+
 export const metadata: Metadata = {
+  // Origin only: Next adds the base path to metadata URLs itself.
+  metadataBase: new URL(new URL(siteUrl).origin),
+  openGraph: { type: 'website', siteName: 'PLACES', title: 'PLACES — The internet, made into a world.', description },
+  twitter: { card: 'summary_large_image', title: 'PLACES — The internet, made into a world.', description },
   title: {
     default: 'PLACES — The internet, made into a world.',
     template: '%s · PLACES',
   },
-  description:
-    'PLACES turns the internet into an explorable world: YourPlace, MindPlace, MarketPlace and WorkPlace — one identity, four Places, one connected world.',
+  description,
   applicationName: 'PLACES',
   appleWebApp: { capable: true, title: 'PLACES', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
@@ -50,7 +60,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteHeader />
         <MobileTopBar />
         <div id="content">{children}</div>
+        <SiteFooter />
         <MobileTabBar />
+        <AppProviders />
+        <Analytics />
       </body>
     </html>
   )

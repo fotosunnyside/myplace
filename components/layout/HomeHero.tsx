@@ -1,6 +1,6 @@
-import Link from 'next/link'
-import { ArrowRight, Hammer, LineChart, Lightbulb, ScanFace, Store } from 'lucide-react'
+import { Hammer, LineChart, Lightbulb, ScanFace, Store } from 'lucide-react'
 import { PlacesWorld } from '@/components/world/PlacesWorld'
+import { EnterCta } from './EnterCta'
 
 const values = [
   { label: 'Make your place.', icon: LineChart },
@@ -33,18 +33,6 @@ function Values({ className = '' }: { className?: string }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function Cta() {
-  return (
-    <Link
-      href="#world"
-      className="group inline-flex h-[var(--hero-cta)] items-center gap-3 rounded-full bg-teal px-[1.9em] text-[length:var(--hero-value)] font-medium text-white shadow-[0_14px_30px_-12px_rgb(18_170_168/0.85)] transition duration-300 ease-gentle hover:bg-teal-deep hover:shadow-[0_18px_36px_-12px_rgb(18_170_168/0.9)] active:scale-[0.98]"
-    >
-      Enter PLACES
-      <ArrowRight className="h-[1.1em] w-[1.1em] transition-transform duration-300 group-hover:translate-x-1" />
-    </Link>
   )
 }
 
@@ -87,7 +75,7 @@ export function HomeHero() {
         <div className="flex flex-col items-start gap-5 lg:contents">
           <Values className="lg:mt-[2.2vw]" />
           <div className="lg:mt-[2.4vw]">
-            <Cta />
+            <EnterCta />
           </div>
         </div>
         <Community className="hidden max-w-[22rem] lg:mt-[2.2vw] lg:block" />

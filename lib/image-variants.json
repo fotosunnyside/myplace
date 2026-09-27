@@ -1,0 +1,112 @@
+{
+ "/districts/marketplace-banner.webp": [
+  480,
+  828,
+  1200,
+  1480
+ ],
+ "/districts/marketplace-card.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/districts/mindplace-banner.webp": [
+  480,
+  828,
+  1200,
+  1492
+ ],
+ "/districts/mindplace-card.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/districts/workplace-banner.webp": [
+  480,
+  828,
+  1200,
+  1480
+ ],
+ "/districts/workplace-card.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/districts/yourplace-banner.webp": [
+  480,
+  828,
+  1200,
+  1496
+ ],
+ "/districts/yourplace-card.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/media/learn-digital.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/media/learn-health.webp": [
+  480,
+  600
+ ],
+ "/media/learn-shop.webp": [
+  480,
+  828,
+  1152
+ ],
+ "/media/learn-writing.webp": [
+  480,
+  567
+ ],
+ "/media/post-landscape.webp": [
+  480,
+  776
+ ],
+ "/world/clouds.webp": [
+  480,
+  828,
+  1200,
+  1800,
+  2400
+ ],
+ "/world/foreground.webp": [
+  480,
+  828,
+  1200,
+  1800,
+  2600
+ ],
+ "/world/marketplace.webp": [
+  480,
+  828,
+  1294
+ ],
+ "/world/mindplace.webp": [
+  480,
+  828,
+  1054
+ ],
+ "/world/mobile-world.webp": [
+  480,
+  828,
+  976
+ ],
+ "/world/workplace.webp": [
+  480,
+  864
+ ],
+ "/world/world-base.webp": [
+  480,
+  828,
+  1200,
+  1800,
+  2572
+ ],
+ "/world/yourplace.webp": [
+  480,
+  894
+ ]
+}

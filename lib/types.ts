@@ -1,156 +1,257 @@
 /**
  * Core domain types for PLACES.
  *
- * The user identity (`PlacesIdentity`) is intentionally structured as a set of
- * per-district "stamps" around one shared core profile, so it can later be
- * promoted to a portable PLACES Passport without changing consumers.
+ * One `Account` (the signed-in person) travels across every Place. Everything a person
+ * creates references them by id, so the same identity shows up in YourPlace, MindPlace,
+ * MarketPlace and WorkPlace — the foundation for a future PLACES Passport.
  */
 
+export type ID = string
 export type DistrictId = 'yourplace' | 'mindplace' | 'marketplace' | 'workplace'
+export type Tone = 'teal' | 'coral' | 'sun' | 'lavender' | 'leaf' | 'sky' | 'neutral'
 
 /* ------------------------------------------------------------------ */
-/* Identity / Passport                                                  */
+/* People & identity                                                    */
 /* ------------------------------------------------------------------ */
 
-export interface CoreProfile {
-  id: string
+export interface Person {
+  id: ID
   name: string
   username: string
   avatar: string
   bio: string
   location: string
-  pronouns?: string
-  joinedAt: string
+  headline: string
   interests: string[]
   skills: string[]
+  joinedAt: number
+  /** Seeded counts for people who exist before this device did. */
+  baseFollowers?: number
+  baseFollowing?: number
 }
 
-export interface Connections {
-  following: number
-  followers: number
-  friends: number
-  communities: string[]
-}
-
-export interface Reputation {
-  /** Aggregate trust score across all Places, 0–100. */
-  score: number
-  badges: { id: string; label: string; district: DistrictId }[]
-}
-
-export interface SavedItem {
-  id: string
-  district: DistrictId
-  kind: 'post' | 'course' | 'discussion' | 'product' | 'shop' | 'opportunity'
-  refId: string
-  savedAt: string
-}
-
-export interface Collection {
-  id: string
-  title: string
-  cover: string
-  itemCount: number
-}
-
-/** Per-district activity — each one is a future Passport "stamp". */
-export interface LearningActivity {
-  coursesInProgress: number
-  coursesCompleted: number
-  discussionsStarted: number
-  helpfulAnswers: number
-}
-
-export interface ShopActivity {
-  shopName?: string
-  listings: number
-  purchases: number
-  favourites: number
-}
-
-export interface ProfessionalActivity {
-  headline: string
+export interface Account extends Person {
+  email: string
   openTo: ('jobs' | 'freelance' | 'collaboration')[]
-  applications: number
-  projects: number
-}
-
-export interface PlacesIdentity {
-  profile: CoreProfile
-  connections: Connections
-  reputation: Reputation
-  saved: SavedItem[]
-  collections: Collection[]
-  activity: {
-    learning: LearningActivity
-    shop: ShopActivity
-    professional: ProfessionalActivity
-  }
 }
 
 /* ------------------------------------------------------------------ */
-/* Content                                                              */
+/* YourPlace                                                            */
 /* ------------------------------------------------------------------ */
 
-export interface Author {
-  name: string
-  username: string
-  avatar: string
+export interface Comment {
+  id: ID
+  authorId: ID
+  body: string
+  createdAt: number
+}
+
+export interface PollOption {
+  id: ID
+  label: string
+  votes: ID[]
 }
 
 export interface Post {
-  id: string
-  author: Author
-  postedAgo: string
+  id: ID
+  authorId: ID
   body: string
   image?: string
-  likes: number
-  comments: number
-  audience: 'friends' | 'following' | 'communities'
+  link?: string
+  location?: string
+  poll?: PollOption[]
+  audience: 'public' | 'friends'
+  createdAt: number
+  likes: ID[]
+  baseLikes?: number
+  comments: Comment[]
+  baseComments?: number
 }
 
-export interface LearningItem {
-  id: string
+/* ------------------------------------------------------------------ */
+/* MindPlace                                                            */
+/* ------------------------------------------------------------------ */
+
+export interface Lesson {
+  id: ID
+  title: string
+  minutes: number
+  body: string
+}
+
+export interface Course {
+  id: ID
   title: string
   subtitle: string
+  description: string
   image: string
-  members: string
   kind: 'course' | 'guide' | 'live'
+  topic: string
+  expertId: ID
+  lessons: Lesson[]
+  baseMembers: number
+  /** For live sessions. */
+  startsAt?: number
+}
+
+export interface Enrollment {
+  courseId: ID
+  startedAt: number
+  completed: ID[]
 }
 
 export interface Discussion {
-  id: string
+  id: ID
   title: string
-  author: Author
+  body: string
+  authorId: ID
   category: string
-  categoryTone: 'teal' | 'coral' | 'sun' | 'lavender' | 'leaf'
-  comments: number
-  postedAgo: string
-  upvotes: string
+  tone: Tone
+  createdAt: number
+  upvoters: ID[]
+  baseUpvotes?: number
+  replies: Comment[]
+  baseReplies?: number
 }
 
+/* ------------------------------------------------------------------ */
+/* MarketPlace                                                          */
+/* ------------------------------------------------------------------ */
+
 export interface Shop {
-  id: string
+  id: ID
   name: string
   category: string
+  description: string
   image: string
+  ownerId: ID
+  createdAt: number
 }
 
 export interface Product {
-  id: string
+  id: ID
+  shopId: ID
   title: string
-  price: string
+  description: string
+  /** In cents. */
+  price: number
   image: string
-  shop: string
+  category: 'Handmade' | 'Digital' | 'Home' | 'Wellness' | 'Services'
+  /** Seller's own Stripe Payment Link — buyers pay the seller directly. */
+  stripeLink?: string
+  createdAt: number
 }
 
+export interface Order {
+  id: ID
+  productId: ID
+  buyerId: ID
+  total: number
+  via: 'stripe' | 'test'
+  createdAt: number
+}
+
+/* ------------------------------------------------------------------ */
+/* WorkPlace                                                            */
+/* ------------------------------------------------------------------ */
+
+export type OpportunityIcon = 'leaf' | 'sun' | 'waves' | 'gem' | 'megaphone' | 'palette' | 'briefcase'
+
 export interface Opportunity {
-  id: string
+  id: ID
   title: string
-  icon: 'leaf' | 'sun' | 'waves' | 'gem' | 'megaphone' | 'palette'
-  iconTone: 'teal' | 'sun' | 'sky' | 'leaf' | 'coral' | 'lavender'
+  org: string
+  postedById: ID
+  icon: OpportunityIcon
+  iconTone: Tone
   location: string
-  type: string
+  type: 'Full Time' | 'Part Time' | 'Flexible' | 'Project' | 'Freelance'
+  kind: 'job' | 'service' | 'project' | 'team'
   tags: string[]
   pay: string
+  description: string
+  createdAt: number
+}
+
+export interface Application {
+  id: ID
+  opportunityId: ID
+  applicantId: ID
+  message: string
+  link?: string
+  createdAt: number
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared                                                               */
+/* ------------------------------------------------------------------ */
+
+export interface Message {
+  id: ID
+  senderId: ID
+  body: string
+  createdAt: number
+}
+
+export interface Thread {
+  id: ID
+  participantIds: ID[]
+  messages: Message[]
+  /** What the conversation is about, e.g. a product or opportunity. */
+  context?: { kind: RefKind; refId: ID; label: string }
+  readAt: number
+}
+
+export type RefKind = 'post' | 'course' | 'discussion' | 'product' | 'shop' | 'opportunity'
+
+export interface Ref {
+  kind: RefKind
+  refId: ID
+}
+
+export interface SavedItem extends Ref {
+  savedAt: number
+}
+
+export interface Collection {
+  id: ID
+  title: string
+  items: Ref[]
+  createdAt: number
+}
+
+export interface Notification {
+  id: ID
+  text: string
+  href: string
+  district: DistrictId
+  createdAt: number
+  read: boolean
+}
+
+/* ------------------------------------------------------------------ */
+/* Whole-world state                                                    */
+/* ------------------------------------------------------------------ */
+
+export interface WorldState {
+  version: number
+  /** Signed-in account on this device (null = guest). */
+  accountId: ID | null
+  /** Accounts created on this device. */
+  accounts: Account[]
+  people: Person[]
+  following: Record<ID, ID[]>
+  posts: Post[]
+  courses: Course[]
+  enrollments: Record<ID, Enrollment[]>
+  discussions: Discussion[]
+  shops: Shop[]
+  products: Product[]
+  orders: Order[]
+  opportunities: Opportunity[]
+  applications: Application[]
+  threads: Thread[]
+  saved: Record<ID, SavedItem[]>
+  collections: Record<ID, Collection[]>
+  notifications: Record<ID, Notification[]>
 }

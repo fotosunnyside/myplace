@@ -11,29 +11,64 @@
 
 One person · one identity · four Places · one connected world.
 
-## Stack
-
-Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide icons.
-
-```bash
-npm install
-npm run dev        # http://localhost:3000
-npm run build && npm start
-npm run lint
-npm run typecheck
-```
-
-## Live preview (GitHub Pages)
+## Live site (GitHub Pages)
 
 **https://fotosunnyside.github.io/myplace/**
 
-`.github/workflows/pages.yml` rebuilds and redeploys on every push. It builds a static export with `PAGES_BASE_PATH=/myplace`.
-To try that build locally: `PAGES_BASE_PATH=/myplace npm run build`, which writes `out/`.
+`.github/workflows/pages.yml` runs lint, typecheck, unit tests, the static build and the Playwright journeys on every push, and deploys only
+when everything passes. Optional: set the repository variable `PLAUSIBLE_DOMAIN` to turn on cookie-free analytics.
+
+## What works today
+
+Everything below is real, saved, and works on the live GitHub Pages site:
+
+- **Accounts:** join (photo, username, interests), sign in and out, edit profile and work profile, download your data, delete your account.
+- **YourPlace:** posts with photos, links, locations and polls; likes, comments, deleting your posts; following people; Saved; Collections;
+  and a built-in assistant that summarizes your day, recommends things and searches your world.
+- **MindPlace:** courses and guides with lessons, enrollment and progress tracking, completion notifications, discussions with replies and
+  upvotes, experts, and live sessions.
+- **MarketPlace:** open a shop, list products with photos, buy with **Stripe Payment Links** (buyers pay the seller directly) or place a test
+  order, message sellers, favourites.
+- **WorkPlace:** browse and filter opportunities, apply with a note and a link, post opportunities, and see who applied.
+- **Messages, notifications, search:** one inbox across Places, a notification center, and search across people, courses, discussions,
+  shops, products, jobs and posts.
+- **Activity:** your orders, applications, learning progress, sales and applicants in one place.
+
+### Local-first for now
+
+GitHub Pages only serves static files, so PLACES keeps each person's world **in their browser (IndexedDB)**. Data survives reloads and syncs
+across tabs, but it isn't shared between people or devices. All reads and writes go through `lib/store/`: pure actions in
+`actions.ts`, persistence in `store.ts`. Moving to a cloud backend (for example Supabase for auth, database, storage and realtime messages,
+plus a Stripe webhook) replaces that layer without touching the UI.
+
+### Selling with Stripe
+
+1. In the Stripe Dashboard → **Payment Links**, create a link for your product.
+2. Under **After payment**, choose "Don't show confirmation page" and redirect to the confirmation URL shown on your product page in
+   PLACES (`…/marketplace/product/?id=<id>&paid=1`).
+3. Paste the Payment Link into the listing (when you create it, or later on the product page).
+
+Buyers pay you directly on Stripe's checkout. When they return, PLACES records the order in their Activity. Stripe's dashboard is the
+source of truth for payments: without a server, PLACES can't independently verify a payment.
+
+## Stack
+
+Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · idb-keyval · Vitest · Playwright.
+
+```bash
+npm install
+npm run dev          # http://localhost:3000
+npm test             # unit tests (store actions)
+npm run build:pages  # static export for GitHub Pages → out/
+npm run test:e2e     # Playwright journeys against out/ (desktop + phone)
+npm run lint && npm run typecheck
+```
 
 ## Structure
 
 ```
-app/                     routes: /, /yourplace, /mindplace, /marketplace, /workplace, /explore, /messages
+app/                     routes: districts + detail pages (course, discussion, product, shop, opportunity), messages,
+                         notifications, search, people, activity, settings, privacy, terms
 components/
   world/                 PlacesWorld (desktop/tablet), MobileWorld, DistrictLabel, ambient layers, fly-in transition
   districts/             DistrictBanner, preview panels, DistrictPage shell, PlaceCards, apps/ (one per district)
@@ -41,7 +76,7 @@ components/
   cards/ profile/ search/ ui/ brand/
 lib/
   types.ts               domain types, incl. PlacesIdentity (the future PLACES Passport)
-  data/                  mock identity + content — swap for API calls later
+  store/                 local-first world: seed, pure actions, selectors, IndexedDB persistence, React hooks
   world/districts.ts     world coordinate system, hotspots, label plates, layer rects, banner title positions
 public/world/            world-base, per-district layers, balloon, clouds, foreground, mobile-world
 public/districts/        district banners and "Continue in…" card art
@@ -74,24 +109,14 @@ District interfaces use container queries, so the same component renders as the 
 
 ## Artwork (placeholder → final)
 
-The art in `public/` is **placeholder** art. It was cut from the design mockups, the baked-in UI text was inpainted out, and it was
-upscaled 4× (Real-ESRGAN). Replace it with commissioned illustration before launch:
-
-```bash
-python3 tools/prep.py mockup-landing.webp mockup-dashboard.webp work/src     # crop + inpaint (only for the mockup placeholders)
-SR_WEIGHTS=weights/ python3 tools/sr.py plus work/src work/up                # optional 4x upscale
-python3 tools/build-assets.py work/up .                                      # compose layers → public/
-```
-
-For final art, put `world.png` (any multiple of 1286 × 764), `mobile.png`, `banner_*.png`, `card_*.png` and so on in `work/up`, then run
-`build-assets.py`. If the composition changes, update the hotspots, label plates and layer rects in `lib/world/districts.ts`. The script
-prints the layer rects.
+The illustrations are placeholders cut from the design mockups (text removed, upscaled 4×). **[docs/ARTWORK.md](docs/ARTWORK.md)** has the
+style block, a prompt and size for every asset, and the label spots to keep clear. Generate the final art with it, put the PNGs in a folder
+and run `python3 tools/build-assets.py <folder> .`, which builds the layers, responsive sizes and sprites. Then push.
 
 ## Identity → PLACES Passport
 
-`PlacesIdentity` (`lib/types.ts`) is one core profile with connections, reputation, saved items and collections. Per-district
-activity (learning, shop, professional) is structured as future Passport "stamps". Every district reads from the same `currentUser`,
-so a backend identity service can replace `lib/data/identity.ts` without changing the UI.
+One `Account` (`lib/types.ts`) owns everything a person creates in every Place: posts, enrollments, shop, orders, applications and
+messages. The "Across PLACES" card on the profile already summarizes it, and it is the basis for a future portable PLACES Passport.
 
 ## Toward iOS
 
