@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import type { DistrictConfig } from '@/lib/world/districts'
 import { cn } from '@/lib/cn'
+import { withBase } from '@/lib/base-path'
 
 interface DistrictLabelProps {
   district: DistrictConfig
@@ -26,7 +27,7 @@ export function DistrictLabel({ district, active, style, variant = 'full', float
     <div className="pointer-events-none absolute z-20" style={style}>
       <div className="h-full w-full motion-safe:animate-[labelFloat_7s_ease-in-out_infinite]" style={{ animationDelay: `${floatDelay}s` }}>
         <a
-          href={district.href}
+          href={withBase(district.href)}
           onClick={(e) => {
             e.preventDefault()
             onEnter()

@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { withBase } from '@/lib/base-path'
 
 interface SearchFieldProps {
   placeholder: string
@@ -10,7 +11,7 @@ interface SearchFieldProps {
 
 export function SearchField({ placeholder, className, size = 'md', name = 'q' }: SearchFieldProps) {
   return (
-    <form role="search" action="/explore" className={cn('group relative', className)}>
+    <form role="search" action={withBase('/explore')} className={cn('group relative', className)}>
       <Search
         aria-hidden
         className={cn(

@@ -8,6 +8,7 @@ import { DISTRICTS, MOBILE_WORLD, pctRect, type Point, type Rect } from '@/lib/w
 import { DistrictLabel } from './DistrictLabel'
 import { CloudDrift, Glints } from './Ambient'
 import { ENTER_MS, useEnterDistrict } from './useEnterDistrict'
+import { withBase } from '@/lib/base-path'
 
 const pad = (r: Rect, p = 4): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + p * 2, h: r.h + p * 2 })
 const center = (r: Rect) =>
@@ -51,7 +52,7 @@ export function MobileWorld() {
         {DISTRICTS.map((d) => (
           <a
             key={d.id}
-            href={d.href}
+            href={withBase(d.href)}
             tabIndex={-1}
             aria-hidden
             onClick={(e) => {

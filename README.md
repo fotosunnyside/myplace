@@ -23,6 +23,13 @@ npm run lint
 npm run typecheck
 ```
 
+## Live preview (GitHub Pages)
+
+**https://fotosunnyside.github.io/myplace/**
+
+`.github/workflows/pages.yml` rebuilds and redeploys on every push. It builds a static export with `PAGES_BASE_PATH=/myplace`.
+To try that build locally: `PAGES_BASE_PATH=/myplace npm run build`, which writes `out/`.
+
 ## Structure
 
 ```

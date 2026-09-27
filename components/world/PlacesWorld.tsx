@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { DistrictLabel } from './DistrictLabel'
 import { ENTER_MS, useEnterDistrict } from './useEnterDistrict'
 import { CloudDrift, CornerClouds, Glints } from './Ambient'
+import { withBase } from '@/lib/base-path'
 
 /** Labels are padded beyond the reserved plate so hover lift never reveals it. */
 const LABEL_PAD = 8
@@ -88,7 +89,7 @@ export function PlacesWorld({ className, foregroundClouds = true, sizes = '(min-
           {DISTRICTS.map((d) => (
             <a
               key={d.id}
-              href={d.href}
+              href={withBase(d.href)}
               tabIndex={-1}
               onClick={(e) => {
                 e.preventDefault()

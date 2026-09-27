@@ -1,5 +1,6 @@
 import type { Point } from '@/lib/world/districts'
 import { WORLD } from '@/lib/world/districts'
+import { withBase } from '@/lib/base-path'
 
 /** Slow, barely-there clouds drifting across the top of the sky. */
 export function CloudDrift({ className = 'top-[-2%] h-[24%]', opacity = 0.5 }: { className?: string; opacity?: number }) {
@@ -7,9 +8,9 @@ export function CloudDrift({ className = 'top-[-2%] h-[24%]', opacity = 0.5 }: {
     <div aria-hidden className={`pointer-events-none absolute inset-x-0 overflow-hidden ${className}`} style={{ opacity }}>
       <div className="flex h-full w-[200%] motion-safe:animate-drift">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/world/clouds.webp" alt="" className="h-full w-1/2 object-cover" draggable={false} />
+        <img src={withBase('/world/clouds.webp')} alt="" className="h-full w-1/2 object-cover" draggable={false} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/world/clouds.webp" alt="" className="h-full w-1/2 object-cover" draggable={false} />
+        <img src={withBase('/world/clouds.webp')} alt="" className="h-full w-1/2 object-cover" draggable={false} />
       </div>
     </div>
   )
@@ -28,9 +29,9 @@ export function CornerClouds() {
     >
       <div className="flex h-full w-[200%] motion-safe:animate-drift-slow">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/world/foreground.webp" alt="" className="h-full w-1/2 object-cover object-bottom" draggable={false} />
+        <img src={withBase('/world/foreground.webp')} alt="" className="h-full w-1/2 object-cover object-bottom" draggable={false} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/world/foreground.webp" alt="" className="h-full w-1/2 object-cover object-bottom" draggable={false} />
+        <img src={withBase('/world/foreground.webp')} alt="" className="h-full w-1/2 object-cover object-bottom" draggable={false} />
       </div>
     </div>
   )
