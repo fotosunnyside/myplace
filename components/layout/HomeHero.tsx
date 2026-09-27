@@ -1,0 +1,105 @@
+import Link from 'next/link'
+import { ArrowRight, Hammer, LineChart, Lightbulb, ScanFace, Store } from 'lucide-react'
+import { PlacesWorld } from '@/components/world/PlacesWorld'
+
+const values = [
+  { label: 'Make your place.', icon: LineChart },
+  { label: 'Learn something.', icon: Lightbulb },
+  { label: 'Build something.', icon: Hammer },
+  { label: 'Find work.', icon: Store },
+  { label: 'Discover people.', icon: ScanFace },
+]
+
+function Headline({ className = '' }: { className?: string }) {
+  return (
+    <h1 className={`font-serif text-navy ${className}`}>
+      <span className="block text-[length:var(--hero-title)] font-semibold leading-[0.9] tracking-[-0.01em]">PLACES</span>
+      <span className="mt-[0.35em] block text-[length:var(--hero-sub)] leading-[1.08] tracking-[-0.01em]">
+        The internet,
+        <br />
+        made into a world.
+      </span>
+    </h1>
+  )
+}
+
+function Values({ className = '' }: { className?: string }) {
+  return (
+    <ul className={`flex flex-col gap-[var(--hero-gap)] ${className}`}>
+      {values.map(({ label, icon: Icon }) => (
+        <li key={label} className="flex items-center gap-4 text-[length:var(--hero-value)] text-navy">
+          <Icon className="h-[1.3em] w-[1.3em] shrink-0 text-teal" strokeWidth={1.4} aria-hidden />
+          {label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Cta() {
+  return (
+    <Link
+      href="#world"
+      className="group inline-flex h-[var(--hero-cta)] items-center gap-3 rounded-full bg-teal px-[1.9em] text-[length:var(--hero-value)] font-medium text-white shadow-[0_14px_30px_-12px_rgb(18_170_168/0.85)] transition duration-300 ease-gentle hover:bg-teal-deep hover:shadow-[0_18px_36px_-12px_rgb(18_170_168/0.9)] active:scale-[0.98]"
+    >
+      Enter PLACES
+      <ArrowRight className="h-[1.1em] w-[1.1em] transition-transform duration-300 group-hover:translate-x-1" />
+    </Link>
+  )
+}
+
+function Community({ className = '' }: { className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-center font-serif text-[length:var(--hero-note)] leading-snug text-navy-soft">
+        A global community to live,
+        <br />
+        learn, create and work — together.
+      </p>
+      <p className="mt-[1.4em] flex items-center justify-center gap-3 text-[0.62rem] font-medium uppercase tracking-[0.34em] text-muted">
+        <span className="h-px w-10 bg-muted/40" />
+        The Conscious Web
+        <span className="h-px w-10 bg-muted/40" />
+      </p>
+    </div>
+  )
+}
+
+const heroVars = [
+  '[--hero-title:4.2rem] lg:[--hero-title:clamp(2.8rem,4.6vw,5.8rem)]',
+  '[--hero-sub:1.9rem] lg:[--hero-sub:clamp(1.3rem,2.05vw,2.6rem)]',
+  '[--hero-value:1rem] lg:[--hero-value:clamp(0.82rem,1.12vw,1.3rem)]',
+  '[--hero-note:0.95rem] lg:[--hero-note:clamp(0.78rem,1.02vw,1.15rem)]',
+  '[--hero-gap:0.55rem] lg:[--hero-gap:clamp(0.4rem,0.72vw,0.95rem)]',
+  '[--hero-cta:3.1rem] lg:[--hero-cta:clamp(2.5rem,3.3vw,3.7rem)]',
+].join(' ')
+
+/**
+ * Desktop (lg+): editorial column (~29%) beside the world (~75%), the world bleeding under the header.
+ * Tablet (md): a compact editorial band above a full-width world, so the world stays dominant.
+ * Phones get <MobileHome /> instead.
+ */
+export function HomeHero() {
+  return (
+    <section aria-label="Welcome to PLACES" className={`relative hidden bg-cream md:block ${heroVars}`}>
+      <div className="grid grid-cols-[1.1fr_1fr] items-end gap-8 px-8 pb-6 pt-[108px] lg:absolute lg:inset-y-0 lg:left-0 lg:z-10 lg:flex lg:w-[29%] lg:flex-col lg:items-stretch lg:justify-center lg:gap-0 lg:pb-[1vw] lg:pl-[3.2vw] lg:pr-[1vw] lg:pt-[84px]">
+        <Headline />
+        <div className="flex flex-col items-start gap-5 lg:contents">
+          <Values className="lg:mt-[2.2vw]" />
+          <div className="lg:mt-[2.4vw]">
+            <Cta />
+          </div>
+        </div>
+        <Community className="hidden max-w-[22rem] lg:mt-[2.2vw] lg:block" />
+      </div>
+
+      <div id="world" className="relative scroll-mt-20 lg:ml-auto lg:w-[75%]">
+        <PlacesWorld sizes="(min-width: 1024px) 75vw, 100vw" />
+        {/* soft hand-off from the editorial column into the world */}
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 hidden w-[16%] bg-gradient-to-r from-cream via-cream/70 to-transparent lg:block" />
+      </div>
+
+      <Community className="py-6 lg:hidden" />
+    </section>
+  )
+}

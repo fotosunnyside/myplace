@@ -1,0 +1,110 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ */
+/* PLACES design tokens                                                 */
+/* ------------------------------------------------------------------ */
+@theme {
+  --color-navy: #123b4a;
+  --color-navy-soft: #3d5f6c;
+  --color-muted: #6f8790;
+  --color-teal: #12aaa8;
+  --color-teal-deep: #0e8f8d;
+  --color-aqua: #58c8c6;
+  --color-teal-wash: #e3f4f2;
+  --color-cream: #fff9ef;
+  --color-ivory: #f7f4ec;
+  --color-sand: #efe8da;
+  --color-line: #ebe4d6;
+  --color-sky: #bfe7f4;
+  --color-leaf: #5e9e68;
+  --color-sun: #f7c75e;
+  --color-coral: #ef927e;
+  --color-lavender: #b8a6d9;
+
+  --font-serif: var(--font-newsreader), 'Iowan Old Style', Georgia, serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-card: 1.25rem;
+  --radius-panel: 1.75rem;
+
+  --shadow-soft: 0 1px 2px rgb(18 59 74 / 0.04), 0 8px 24px -12px rgb(18 59 74 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(18 59 74 / 0.05), 0 18px 40px -16px rgb(18 59 74 / 0.28);
+  --shadow-label: 0 2px 6px rgb(18 59 74 / 0.08), 0 14px 32px -12px rgb(18 59 74 / 0.35);
+
+  --ease-gentle: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-drift: drift 140s linear infinite;
+  --animate-drift-slow: drift 220s linear infinite;
+  --animate-bob: bob 9s ease-in-out infinite;
+  --animate-glint: glint 5.5s ease-in-out infinite;
+
+  @keyframes drift {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(0.6%, -6%, 0) rotate(1.2deg); }
+  }
+  @keyframes glint {
+    0%, 70%, 100% { opacity: 0; transform: scale(0.4); }
+    80% { opacity: 0.95; transform: scale(1); }
+    90% { opacity: 0.2; transform: scale(0.7); }
+  }
+}
+
+@keyframes labelFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -0.35cqw, 0); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                 */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--color-ivory);
+    color: var(--color-navy);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-aqua) 40%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-teal);
+    outline-offset: 3px;
+    border-radius: 999px;
+  }
+}
+
+@layer components {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
