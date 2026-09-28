@@ -7,6 +7,7 @@ import type {
   Account,
   Collection,
   Comment,
+  Contract,
   DistrictId,
   ID,
   Notification,
@@ -17,6 +18,7 @@ import type {
   Shop,
   Thread,
   WorldState,
+  Workroom,
 } from '@/lib/types'
 
 export const uid = (prefix = 'id') =>
@@ -132,6 +134,9 @@ export function deleteAccount(s: WorldState): WorldState {
     coursePurchases: (s.coursePurchases ?? []).filter((p) => p.buyerId !== me),
     opportunities: s.opportunities.filter((o) => o.postedById !== me),
     applications: s.applications.filter((a) => a.applicantId !== me),
+    ads: (s.ads ?? []).filter((a) => a.ownerId !== me),
+    contracts: (s.contracts ?? []).filter((c) => c.employerId !== me && c.workerId !== me),
+    workrooms: (s.workrooms ?? []).filter((w) => w.ownerId !== me).map((w) => ({ ...w, memberIds: w.memberIds.filter((m) => m !== me) })),
     threads: s.threads.filter((t) => !t.participantIds.includes(me)),
     following: Object.fromEntries(Object.entries(omit(s.following)).map(([k, v]) => [k, v.filter((x) => x !== me)])),
     enrollments: omit(s.enrollments),
@@ -337,6 +342,9 @@ export function replyToDiscussion(s: WorldState, discussionId: ID, body: string,
 /* MarketPlace                                                          */
 /* ------------------------------------------------------------------ */
 
+/** PLACES sales admin fee on shipped (physical) items. No listing fees. */
+export const SALES_FEE_RATE = 0.01
+
 export const STRIPE_LINK_RE = /^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com|donate\.stripe\.com)\//
 
 export function createShop(s: WorldState, input: Pick<Shop, 'name' | 'category' | 'description' | 'image'>, now: number): { state: WorldState; id: ID } {
@@ -347,7 +355,7 @@ export function createShop(s: WorldState, input: Pick<Shop, 'name' | 'category' 
   return { state: { ...s, shops: [...s.shops, { ...input, name: input.name.trim(), id, ownerId: me, createdAt: now }] }, id }
 }
 
-export type ProductInput = Pick<Product, 'title' | 'description' | 'price' | 'image' | 'category'> & { stripeLink?: string }
+export type ProductInput = Pick<Product, 'title' | 'description' | 'price' | 'image' | 'category'> & { stripeLink?: string; ships?: boolean }
 
 export function createProduct(s: WorldState, input: ProductInput, now: number): { state: WorldState; id: ID } {
   const me = need(s)
@@ -381,7 +389,8 @@ export function placeOrder(s: WorldState, productId: ID, via: 'stripe' | 'test',
   const p = s.products.find((x) => x.id === productId)
   if (!p) throw new ActionError('That product is no longer available.')
   const shop = s.shops.find((x) => x.id === p.shopId)
-  let next: WorldState = { ...s, orders: [{ id: uid('ord'), productId, buyerId: me, total: p.price, via, createdAt: now }, ...s.orders] }
+  const fee = p.ships ? Math.round(p.price * SALES_FEE_RATE) : 0
+  let next: WorldState = { ...s, orders: [{ id: uid('ord'), productId, buyerId: me, total: p.price, fee: fee || undefined, via, createdAt: now }, ...s.orders] }
   next = notify(next, me, { text: `Order confirmed: ${p.title}.`, href: '/activity', district: 'marketplace' }, now)
   if (shop) next = notify(next, shop.ownerId, { text: `New order for ${p.title}!`, href: '/activity', district: 'marketplace' }, now)
   return next
@@ -400,12 +409,17 @@ const kindIcon: Record<Opportunity['kind'], Pick<Opportunity, 'icon' | 'iconTone
   team: { icon: 'megaphone', iconTone: 'coral' },
 }
 
-export function createOpportunity(s: WorldState, input: OpportunityInput, now: number): { state: WorldState; id: ID } {
-  const me = need(s)
+/** Throws if a post isn't ready — checked before sending someone to pay the posting fee. */
+export function checkOpportunity(input: OpportunityInput) {
   if (input.title.trim().length < 4) throw new ActionError('Add a title.')
   if (input.description.trim().length < 20) throw new ActionError('Describe the opportunity in at least a sentence or two.')
+}
+
+export function createOpportunity(s: WorldState, input: OpportunityInput, now: number, paidVia: 'stripe' | 'test' = 'test'): { state: WorldState; id: ID } {
+  const me = need(s)
+  checkOpportunity(input)
   const id = uid('opp')
-  return { state: { ...s, opportunities: [{ ...input, ...kindIcon[input.kind], title: input.title.trim(), id, postedById: me, createdAt: now }, ...s.opportunities] }, id }
+  return { state: { ...s, opportunities: [{ ...input, ...kindIcon[input.kind], title: input.title.trim(), id, postedById: me, createdAt: now, paidVia }, ...s.opportunities] }, id }
 }
 
 export function deleteOpportunity(s: WorldState, id: ID): WorldState {
@@ -605,4 +619,188 @@ export function isListed(s: WorldState, courseId: ID) {
   if (!c) return false
   const isAccount = s.accounts.some((a) => a.id === c.expertId)
   return !isAccount || hasCreatorPlan(s, c.expertId)
+}
+
+/* ------------------------------------------------------------------ */
+/* Ads — one sponsored mini banner per Place                            */
+/* ------------------------------------------------------------------ */
+
+export const AD_DAYS = { week: 7, month: 30 } as const
+
+export interface AdInput {
+  business: string
+  headline: string
+  image: string
+  url: string
+  district: DistrictId
+  plan: 'week' | 'month'
+}
+
+export function checkAd(input: AdInput) {
+  if (input.business.trim().length < 2) throw new ActionError('Add your business name.')
+  if (input.headline.trim().length < 6) throw new ActionError('Write a short headline (at least 6 characters).')
+  if (!/^https:\/\/\S+\.\S+/.test(input.url.trim())) throw new ActionError('Your link should start with https://')
+  if (!input.image) throw new ActionError('Add an image for your banner.')
+}
+
+/** Books an ad. It starts when the Place's slot is free (after the last booking there ends). */
+export function createAd(s: WorldState, input: AdInput, via: 'stripe' | 'test', now: number): { state: WorldState; id: ID } {
+  const me = need(s)
+  checkAd(input)
+  const queueEnd = Math.max(now, ...(s.ads ?? []).filter((a) => a.district === input.district).map((a) => a.endsAt))
+  const id = uid('ad')
+  const ad = {
+    id,
+    ownerId: me,
+    business: input.business.trim(),
+    headline: input.headline.trim(),
+    image: input.image,
+    url: input.url.trim(),
+    district: input.district,
+    plan: input.plan,
+    startsAt: queueEnd,
+    endsAt: queueEnd + AD_DAYS[input.plan] * DAY,
+    via,
+    createdAt: now,
+  }
+  const next = { ...s, ads: [...(s.ads ?? []), ad] }
+  return { state: notify(next, me, { text: `Your ad in ${input.district} is booked.`, href: '/advertise', district: input.district }, now), id }
+}
+
+export const activeAd = (s: WorldState, district: DistrictId, now: number) =>
+  (s.ads ?? []).find((a) => a.district === district && a.startsAt <= now && now < a.endsAt)
+
+export function cancelAd(s: WorldState, adId: ID): WorldState {
+  const me = need(s)
+  return { ...s, ads: (s.ads ?? []).filter((a) => !(a.id === adId && a.ownerId === me)) }
+}
+
+/* ------------------------------------------------------------------ */
+/* Workrooms — the in-house chat for teams and hires                    */
+/* ------------------------------------------------------------------ */
+
+const room = (s: WorldState, id: ID) => (s.workrooms ?? []).find((w) => w.id === id)
+const updateRoom = (s: WorldState, id: ID, fn: (w: Workroom) => Workroom): WorldState => ({ ...s, workrooms: (s.workrooms ?? []).map((w) => (w.id === id ? fn(w) : w)) })
+
+function newRoom(name: string, ownerId: ID, memberIds: ID[], now: number, contractId?: ID): Workroom {
+  return {
+    id: uid('wrk'),
+    name: name.trim(),
+    ownerId,
+    memberIds: [...new Set([ownerId, ...memberIds])],
+    channels: [
+      { id: uid('ch'), name: 'general' },
+      { id: uid('ch'), name: 'updates' },
+    ],
+    messages: [],
+    contractId,
+    readAt: { [ownerId]: now },
+    createdAt: now,
+  }
+}
+
+export function createWorkroom(s: WorldState, name: string, now: number): { state: WorldState; id: ID } {
+  const me = need(s)
+  if (name.trim().length < 2) throw new ActionError('Name your workroom.')
+  const w = newRoom(name, me, [], now)
+  return { state: { ...s, workrooms: [w, ...(s.workrooms ?? [])] }, id: w.id }
+}
+
+export function addWorkroomMember(s: WorldState, workroomId: ID, username: string, now: number): WorldState {
+  const me = need(s)
+  const w = room(s, workroomId)
+  if (!w || !w.memberIds.includes(me)) throw new ActionError('Workroom not found.')
+  const u = username.trim().replace(/^@/, '').toLowerCase()
+  const p = [...s.accounts, ...s.people].find((x) => x.username === u)
+  if (!p) throw new ActionError(`No one with the username @${u}.`)
+  if (w.memberIds.includes(p.id)) throw new ActionError(`${p.name} is already here.`)
+  const next = updateRoom(s, workroomId, (x) => ({ ...x, memberIds: [...x.memberIds, p.id] }))
+  return notify(next, p.id, { text: `You were added to the workroom “${w.name}”.`, href: `/workroom/?id=${w.id}`, district: 'workplace' }, now)
+}
+
+export function addChannel(s: WorldState, workroomId: ID, name: string): { state: WorldState; id: ID } {
+  const me = need(s)
+  const w = room(s, workroomId)
+  if (!w || !w.memberIds.includes(me)) throw new ActionError('Workroom not found.')
+  const clean = name.trim().toLowerCase().replace(/^#/, '').replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '')
+  if (!clean) throw new ActionError('Name the channel.')
+  if (w.channels.some((c) => c.name === clean)) throw new ActionError(`#${clean} already exists.`)
+  const id = uid('ch')
+  return { state: updateRoom(s, workroomId, (x) => ({ ...x, channels: [...x.channels, { id, name: clean }] })), id }
+}
+
+export function postWorkMessage(s: WorldState, workroomId: ID, channelId: ID, body: string, now: number): WorldState {
+  const me = need(s)
+  const w = room(s, workroomId)
+  if (!w || !w.memberIds.includes(me)) throw new ActionError('Workroom not found.')
+  if (!body.trim()) return s
+  const msg = { id: uid('wm'), channelId, senderId: me, body: body.trim(), createdAt: now }
+  return updateRoom(s, workroomId, (x) => ({ ...x, messages: [...x.messages, msg], readAt: { ...x.readAt, [me]: now } }))
+}
+
+export function markWorkroomRead(s: WorldState, workroomId: ID, now: number): WorldState {
+  const me = need(s)
+  return updateRoom(s, workroomId, (x) => ({ ...x, readAt: { ...x.readAt, [me]: now } }))
+}
+
+/* ------------------------------------------------------------------ */
+/* Hiring, contracts & invoices                                         */
+/* ------------------------------------------------------------------ */
+
+/** Employer hires an applicant: creates a contract and a shared workroom. */
+export function hire(s: WorldState, applicationId: ID, now: number): { state: WorldState; id: ID } {
+  const me = need(s)
+  const app = s.applications.find((a) => a.id === applicationId)
+  const opp = app && s.opportunities.find((o) => o.id === app.opportunityId)
+  if (!app || !opp) throw new ActionError('Application not found.')
+  if (opp.postedById !== me) throw new ActionError('Only the person who posted this can hire.')
+  const existing = (s.contracts ?? []).find((c) => c.opportunityId === opp.id && c.workerId === app.applicantId)
+  if (existing) return { state: s, id: existing.workroomId }
+  const contractId = uid('ctr')
+  const w = newRoom(opp.title, me, [app.applicantId], now, contractId)
+  const worker = s.accounts.find((a) => a.id === app.applicantId) ?? s.people.find((p) => p.id === app.applicantId)
+  w.messages.push({
+    id: uid('wm'),
+    channelId: w.channels[0].id,
+    senderId: 'p_guide',
+    body: `Welcome to your workroom for “${opp.title}”. ${worker?.name ?? 'Your new teammate'} was hired. Use #general to chat and #updates for progress. Invoices live in the contract panel.`,
+    createdAt: now,
+  })
+  const contract = { id: contractId, title: opp.title, opportunityId: opp.id, employerId: me, workerId: app.applicantId, rate: opp.pay, status: 'active' as const, workroomId: w.id, invoices: [], createdAt: now }
+  let next: WorldState = { ...s, contracts: [contract, ...(s.contracts ?? [])], workrooms: [w, ...(s.workrooms ?? [])] }
+  next = notify(next, app.applicantId, { text: `You’re hired for ${opp.title}! Your workroom is ready.`, href: `/workroom/?id=${w.id}`, district: 'workplace' }, now)
+  return { state: next, id: w.id }
+}
+
+const contractOf = (s: WorldState, id: ID) => (s.contracts ?? []).find((c) => c.id === id)
+const updateContract = (s: WorldState, id: ID, fn: (c: Contract) => Contract): WorldState => ({ ...s, contracts: (s.contracts ?? []).map((c) => (c.id === id ? fn(c) : c)) })
+
+export function addInvoice(s: WorldState, contractId: ID, input: { amount: number; description: string; payLink?: string }, now: number): WorldState {
+  const me = need(s)
+  const c = contractOf(s, contractId)
+  if (!c || c.workerId !== me) throw new ActionError('Only the person hired can request payment.')
+  if (c.status !== 'active') throw new ActionError('This contract is complete.')
+  if (!Number.isFinite(input.amount) || input.amount < 100) throw new ActionError('Request at least $1.')
+  if (!input.description.trim()) throw new ActionError('Describe what this payment is for.')
+  const link = input.payLink?.trim()
+  if (link && !/^https:\/\//.test(link)) throw new ActionError('Payment links should start with https://')
+  const inv = { id: uid('inv'), amount: Math.round(input.amount), description: input.description.trim(), payLink: link || undefined, status: 'open' as const, createdAt: now }
+  const next = updateContract(s, contractId, (x) => ({ ...x, invoices: [...x.invoices, inv] }))
+  return notify(next, c.employerId, { text: `Payment requested for ${c.title}.`, href: `/workroom/?id=${c.workroomId}`, district: 'workplace' }, now)
+}
+
+export function markInvoicePaid(s: WorldState, contractId: ID, invoiceId: ID, now: number): WorldState {
+  const me = need(s)
+  const c = contractOf(s, contractId)
+  if (!c || c.employerId !== me) throw new ActionError('Only the employer can mark payments as paid.')
+  const next = updateContract(s, contractId, (x) => ({ ...x, invoices: x.invoices.map((i) => (i.id === invoiceId ? { ...i, status: 'paid' as const, paidAt: now } : i)) }))
+  return notify(next, c.workerId, { text: `You were paid for ${c.title}.`, href: `/workroom/?id=${c.workroomId}`, district: 'workplace' }, now)
+}
+
+export function completeContract(s: WorldState, contractId: ID, now: number): WorldState {
+  const me = need(s)
+  const c = contractOf(s, contractId)
+  if (!c || c.employerId !== me) throw new ActionError('Only the employer can complete the contract.')
+  const next = updateContract(s, contractId, (x) => ({ ...x, status: 'completed' as const }))
+  return notify(next, c.workerId, { text: `${c.title} is complete. Great work!`, href: `/workroom/?id=${c.workroomId}`, district: 'workplace' }, now)
 }

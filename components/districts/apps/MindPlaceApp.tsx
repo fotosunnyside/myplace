@@ -8,7 +8,8 @@ import { FilterPills } from '@/components/ui/FilterPills'
 import { Avatar, Button, Card, SectionHeader } from '@/components/ui/primitives'
 import { isListed } from '@/lib/store/actions'
 import { useWorld, withAuth } from '@/lib/store/hooks'
-import { enrollmentsOf, person } from '@/lib/store/selectors'
+import { enrollmentsOf, formatPrice, person } from '@/lib/store/selectors'
+import { CREATOR_PLAN } from '@/lib/config'
 import { openCreate } from '@/lib/ui'
 
 const FILTERS = ['All', 'Courses', 'Discussions', 'Guides', 'Experts', 'Live']
@@ -70,7 +71,7 @@ export function MindPlaceApp({ compact = false }: { compact?: boolean }) {
         <Link href="/teach" className="group flex flex-wrap items-center justify-between gap-4 rounded-card bg-gradient-to-r from-teal-wash via-cream to-[#fdf2d6] p-5 shadow-soft transition hover:shadow-lift">
           <span>
             <span className="block font-serif text-2xl">Share what you know</span>
-            <span className="text-sm text-navy-soft">Host your own courses — free or paid — for $2/month. You keep every sale.</span>
+            <span className="text-sm text-navy-soft">Host your own courses — free or paid — for {formatPrice(CREATOR_PLAN.price)}/month. You keep every sale.</span>
           </span>
           <span className="inline-flex h-10 items-center rounded-full bg-teal px-5 text-sm font-medium text-white transition group-hover:bg-teal-deep">Teach on PLACES →</span>
         </Link>

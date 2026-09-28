@@ -2,25 +2,46 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle2, MapPin, MessageCircle, Trash2, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { CheckCircle2, MapPin, MessageCircle, Trash2, Wallet, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { SaveButton, TimeAgo, oppIcons, oppTones } from '@/components/cards'
 import { TextArea, TextField } from '@/components/ui/fields'
 import { Avatar, Button, Card, Tag } from '@/components/ui/primitives'
-import { apply, deleteOpportunity, openThread } from '@/lib/store/actions'
-import { perform, useWorld, withAuth } from '@/lib/store/hooks'
+import { apply, createOpportunity, deleteOpportunity, hire, openThread, type OpportunityInput } from '@/lib/store/actions'
+import { perform, useHydrated, useWorld, withAuth } from '@/lib/store/hooks'
+import { PENDING_JOB } from '@/components/app/CreateDialogs'
 import { person } from '@/lib/store/selectors'
 import { cn } from '@/lib/cn'
 import { NotFoundHere, Shell } from './Shell'
 
 export function OpportunityDetail() {
-  const id = useSearchParams().get('id')
+  const params = useSearchParams()
+  const id = params.get('id')
+  const publish = params.get('publish') === '1'
   const world = useWorld()
+  const ready = useHydrated()
+  const handled = useRef(false)
   const router = useRouter()
+
+  // Back from paying the job-post fee on Stripe: publish the saved draft.
+  useEffect(() => {
+    if (!ready || !publish || handled.current) return
+    handled.current = true
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(PENDING_JOB) ?? 'null') as { input: OpportunityInput; at: number } | null
+      if (pending && Date.now() - pending.at < 6 * 3_600_000 && world.accountId) {
+        const r = perform((s, now) => createOpportunity(s, pending.input, now, 'stripe'), 'Payment received — your opportunity is live!')
+        sessionStorage.removeItem(PENDING_JOB)
+        if (r.ok) return router.replace(`/workplace/opportunity/?id=${r.id}`)
+      }
+    } catch {}
+    router.replace('/workplace')
+  }, [ready, publish, world.accountId, router])
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
   const o = world.opportunities.find((x) => x.id === id)
 
+  if (publish) return <Shell width="max-w-4xl">{null}</Shell>
   if (!o)
     return (
       <Shell back={{ href: '/workplace', label: 'WorkPlace' }} width="max-w-4xl">
@@ -84,9 +105,28 @@ export function OpportunityDetail() {
               </p>
               {applicants.map((a) => {
                 const who = person(world, a.applicantId)
+                const contract = (world.contracts ?? []).find((c) => c.opportunityId === o.id && c.workerId === a.applicantId)
                 return (
                   <div key={a.id} className="rounded-xl bg-ivory p-3 text-sm">
-                    <p className="font-semibold">{who.name}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold">{who.name}</p>
+                      {contract ? (
+                        <Link href={`/workroom/?id=${contract.workroomId}`} className="inline-flex items-center gap-1 text-xs font-semibold text-teal-deep hover:underline">
+                          <Users className="h-3.5 w-3.5" /> Workroom
+                        </Link>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (!confirm(`Hire ${who.name} for ${o.title}? You’ll get a shared workroom and a contract for payments.`)) return
+                            const r = perform((s, now) => hire(s, a.id, now), `${who.name} is hired!`)
+                            if (r.ok) router.push(`/workroom/?id=${r.id}`)
+                          }}
+                        >
+                          Hire
+                        </Button>
+                      )}
+                    </div>
                     <p className="mt-1 text-navy-soft">{a.message}</p>
                     {a.link && (
                       <a href={a.link} target="_blank" rel="noopener noreferrer nofollow" className="mt-1 block truncate text-teal-deep hover:underline">
@@ -111,6 +151,17 @@ export function OpportunityDetail() {
           ) : myApp ? (
             <Card className="p-5 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-teal" />
+              {(() => {
+                const c = (world.contracts ?? []).find((x) => x.opportunityId === o.id && x.workerId === world.accountId)
+                return c ? (
+                  <>
+                    <p className="mt-3 font-semibold">You’re hired!</p>
+                    <Link href={`/workroom/?id=${c.workroomId}`} className="mt-3 inline-flex h-10 items-center rounded-full bg-teal px-5 text-sm font-medium text-white">
+                      Open workroom
+                    </Link>
+                  </>
+                ) : null
+              })()}
               <p className="mt-3 font-semibold">You applied</p>
               <p className="mt-1 text-sm text-muted">
                 <TimeAgo ts={myApp.createdAt} /> · track it in{' '}

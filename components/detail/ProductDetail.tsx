@@ -87,6 +87,7 @@ export function ProductDetail() {
           <h1 className="mt-2 font-serif text-[clamp(2.2rem,5vw,3.2rem)] leading-[1.02]">{p.title}</h1>
           <p className="mt-3 text-2xl font-semibold">{formatPrice(p.price)}</p>
           <p className="mt-5 whitespace-pre-line leading-relaxed text-navy-soft">{p.description}</p>
+          {p.ships && <p className="mt-3 inline-flex rounded-full bg-ivory px-3 py-1 text-sm text-navy-soft">📦 Ships from the seller</p>}
 
           {!mine && (
             <>
@@ -132,11 +133,13 @@ export function ProductDetail() {
 
 function SellerPanel({ productId, stripeLink }: { productId: string; stripeLink?: string }) {
   const router = useRouter()
+  const world = useWorld()
   const [link, setLink] = useState(stripeLink ?? '')
   const url = confirmationUrl(productId)
   return (
     <Card className="mt-7 grid gap-4 p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your listing</p>
+      <p className="text-sm text-muted">No listing fees.{' '}{world.products.find((x) => x.id === productId)?.ships ? 'Shipped sales carry a 1% PLACES admin fee.' : 'Digital items and services carry no PLACES fee.'}</p>
       <div className="grid gap-1.5">
         <label htmlFor="stripe-link" className="text-sm font-medium">
           Stripe Payment Link

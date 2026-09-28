@@ -157,3 +157,98 @@ test('a creator can subscribe, publish a paid course and a learner can unlock it
 
   expect(errors).toEqual([])
 })
+
+async function join(page: Page, name: string, username: string) {
+  await page.getByLabel('Your name').fill(name)
+  await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Email').fill(`${username}@example.com`)
+  await page.getByRole('button', { name: 'Create my place' }).click()
+}
+
+async function switchTo(page: Page, username: string) {
+  await page.goto('settings/')
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByText('Signed out.')).toBeVisible()
+  await settle(page)
+  await page.goto('yourplace/')
+  await visible(page, 'Join PLACES').click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).last().click()
+  await page.getByLabel('Email').fill(`${username}@example.com`)
+  await page.getByRole('button', { name: 'Sign in', exact: true }).last().click()
+  await expect(page.getByText('Signed in.')).toBeVisible()
+  await settle(page)
+}
+
+test('an employer can post, hire into a workroom and pay an invoice', async ({ page }, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  page.on('dialog', (d) => d.accept())
+  const boss = `boss_${info.project.name}`
+  const pro = `pro_${info.project.name}`
+
+  // Employer posts an opportunity (test mode, normally $2)
+  await page.goto('workplace/')
+  await visible(page, '+ Post an opportunity').click()
+  await join(page, 'Bea Boss', boss)
+  await page.getByLabel('Title').fill('Logo design')
+  await page.getByLabel('Description').fill('A friendly logo for our small studio, with two rounds of changes.')
+  await page.getByRole('button', { name: /Post opportunity · \$2/ }).click()
+  await expect(page).toHaveURL(/opportunity\/\?id=opp_/)
+  const oppUrl = page.url()
+  await page.waitForTimeout(350)
+
+  // A freelancer applies
+  await page.goto('settings/')
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.goto(oppUrl)
+  await page.getByLabel('Why you’re a great fit').fill('I have designed logos for twenty small shops.')
+  await page.getByRole('button', { name: 'Send application' }).click()
+  await join(page, 'Pat Pro', pro)
+  await expect(page.getByText('You applied')).toBeVisible()
+  await page.waitForTimeout(350)
+
+  // Employer hires → workroom
+  await switchTo(page, boss)
+  await page.goto(oppUrl)
+  await page.getByRole('button', { name: 'Hire' }).click()
+  await expect(page).toHaveURL(/workroom\/\?id=wrk_/)
+  await page.getByLabel('Message #general').fill('Welcome aboard, Pat!')
+  await page.getByLabel('Message #general').press('Enter')
+  await expect(page.getByText('Welcome aboard, Pat!')).toBeVisible()
+  const roomUrl = page.url()
+  await page.waitForTimeout(350)
+
+  // Freelancer requests payment
+  await switchTo(page, pro)
+  await page.goto(roomUrl)
+  await expect(page.getByText('Welcome aboard, Pat!')).toBeVisible()
+  await page.getByLabel('Amount (USD)').fill('300')
+  await page.getByLabel('For', { exact: true }).fill('Logo, final files')
+  await page.getByRole('button', { name: 'Request payment' }).click()
+  await expect(page.getByText('Logo, final files')).toBeVisible()
+  await page.waitForTimeout(350)
+
+  // Employer marks it paid
+  await switchTo(page, boss)
+  await page.goto(roomUrl)
+  await page.getByRole('button', { name: 'Mark as paid' }).click()
+  await expect(page.getByText('Marked as paid.')).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
+test('a business can book the sponsored banner in a Place', async ({ page }, info) => {
+  page.on('dialog', (d) => d.accept())
+  await page.goto('advertise/?place=mindplace')
+  await page.getByLabel('Business name').fill('Candle Co')
+  await page.getByLabel('Headline').fill('Small-batch candles for calm evenings')
+  await page.getByLabel('Link').fill('https://candle.example')
+  await page.locator('input[type=file]').setInputFiles('tests/e2e/fixture.png')
+  await expect(page.getByRole('img', { name: 'Selected image' })).toBeVisible()
+  await page.getByRole('button', { name: /Book my banner/ }).click()
+  await join(page, 'Cal Candle', `candle_${info.project.name}`)
+  await expect(page.getByText('Test ad booked.')).toBeVisible()
+  await page.waitForTimeout(350)
+  await page.goto('mindplace/')
+  await expect(page.getByRole('link', { name: /Sponsored: Candle Co/ })).toBeVisible()
+})

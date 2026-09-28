@@ -9,6 +9,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173/myplace/',
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   projects: [

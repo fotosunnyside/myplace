@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import type { DistrictId } from '@/lib/types'
 import { getDistrict } from '@/lib/world/districts'
 import { SearchField } from '@/components/search/SearchField'
+import { AdSlot } from '@/components/ads/AdSlot'
 import { DISTRICT_APPS } from './apps'
 import { DistrictBanner } from './DistrictBanner'
 import { PlaceCards } from './PlaceCards'
@@ -38,6 +39,8 @@ export function DistrictPage({ id }: { id: DistrictId }) {
             <SearchField placeholder={placeholder} size="lg" className="shadow-lift [&_input]:h-14 [&_input]:bg-white" />
           </div>
         )}
+
+        <AdSlot district={id} className="mt-5 md:mt-10" />
 
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 24 }}

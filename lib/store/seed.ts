@@ -1,7 +1,7 @@
 import type { Course, Discussion, Opportunity, Person, Post, Product, Shop, WorldState } from '@/lib/types'
 
 /** Bump when seed content changes shape; user-created content is preserved across bumps. */
-export const SEED_VERSION = 4
+export const SEED_VERSION = 5
 
 const H = 3_600_000
 const D = 24 * H
@@ -144,6 +144,9 @@ export function seedWorld(now: number): WorldState {
     coursePurchases: [],
     opportunities: opportunities(now),
     applications: [],
+    ads: [],
+    contracts: [],
+    workrooms: [],
     threads: [],
     saved: {},
     collections: {},

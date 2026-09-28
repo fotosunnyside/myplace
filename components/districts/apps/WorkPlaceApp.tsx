@@ -81,6 +81,11 @@ export function WorkPlaceApp({ compact = false }: { compact?: boolean }) {
                 </Link>{' '}
                 · {posted} posted
               </p>
+              {account && (
+                <Link href="/workrooms" className="mt-3 flex items-center justify-between rounded-xl bg-ivory px-3 py-2.5 font-medium hover:bg-sand">
+                  Your workrooms <span className="text-muted">{(world.workrooms ?? []).filter((w) => w.memberIds.includes(account.id)).length} →</span>
+                </Link>
+              )}
               <Button size="sm" variant="soft" className="mt-3 w-full" onClick={() => withAuth(() => openCreate('opportunity'), 'Join PLACES to post an opportunity.')}>
                 + Post an opportunity
               </Button>

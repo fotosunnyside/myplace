@@ -8,10 +8,11 @@ import { DistrictIcon } from '@/components/districts/DistrictIcon'
 import { Dialog } from '@/components/ui/Dialog'
 import { ImagePicker, Select, TextArea, TextField } from '@/components/ui/fields'
 import { Button } from '@/components/ui/primitives'
-import { DISCUSSION_CATEGORIES, createDiscussion, createOpportunity, createPost, createProduct, createShop } from '@/lib/store/actions'
+import { DISCUSSION_CATEGORIES, checkOpportunity, createDiscussion, createOpportunity, createPost, createProduct, createShop, type OpportunityInput } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
-import { shopOf } from '@/lib/store/selectors'
-import { closeCreate, openCreate, useCreate, type CreateKind } from '@/lib/ui'
+import { formatPrice, shopOf } from '@/lib/store/selectors'
+import { JOB_POST } from '@/lib/config'
+import { closeCreate, openCreate, toast, useCreate, type CreateKind } from '@/lib/ui'
 import { orderedDistricts } from '@/lib/world/districts'
 import type { Opportunity, Product } from '@/lib/types'
 
@@ -213,13 +214,14 @@ function NewProduct() {
   const [category, setCategory] = useState<Product['category']>('Handmade')
   const [image, setImage] = useState<string>()
   const [stripeLink, setStripeLink] = useState('')
+  const [ships, setShips] = useState(false)
   return (
     <form
       className="grid gap-4"
       onSubmit={(e) => {
         e.preventDefault()
         const cents = Math.round(parseFloat(price.replace(/[^0-9.]/g, '')) * 100)
-        const r = perform((s, now) => createProduct(s, { title, description, price: cents, category, image: image ?? '', stripeLink }, now), 'Listed in MarketPlace.')
+        const r = perform((s, now) => createProduct(s, { title, description, price: cents, category, image: image ?? '', stripeLink, ships }, now), 'Listed in MarketPlace.')
         if (r.ok) {
           closeCreate()
           router.push(`/marketplace/product/?id=${r.id}`)
@@ -233,6 +235,13 @@ function NewProduct() {
         <TextField label="Price (USD)" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="24.00" required />
         <Select label="Category" options={PRODUCT_CATEGORIES} value={category} onChange={(e) => setCategory(e.target.value as Product['category'])} />
       </div>
+      <label className="flex items-start gap-3 rounded-2xl border border-line bg-white p-4 text-sm">
+        <input type="checkbox" checked={ships} onChange={(e) => setShips(e.target.checked)} className="mt-0.5 h-4 w-4 accent-teal" />
+        <span>
+          <span className="block font-medium text-navy">This is a physical item I ship</span>
+          <span className="text-muted">No listing fees. Shipped sales carry a small 1% PLACES admin fee.</span>
+        </span>
+      </label>
       <TextField
         label="Stripe Payment Link"
         type="url"
@@ -253,6 +262,9 @@ function NewProduct() {
   )
 }
 
+/** Draft kept while the poster pays the job-post fee on Stripe. */
+export const PENDING_JOB = 'places:pending-job'
+
 const TYPES: Opportunity['type'][] = ['Full Time', 'Part Time', 'Flexible', 'Project', 'Freelance']
 const KINDS: Record<string, Opportunity['kind']> = { Job: 'job', Project: 'project', Service: 'service', 'Team role': 'team' }
 
@@ -267,15 +279,23 @@ function OpportunityForm() {
       className="grid gap-4"
       onSubmit={(e) => {
         e.preventDefault()
-        const r = perform(
-          (s, now) =>
-            createOpportunity(
-              s,
-              { title: f.title, org: f.org || myName, location: f.location, type: f.type, kind: KINDS[f.kind], pay: f.pay || 'Discuss', description: f.description, tags: f.tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 4) },
-              now,
-            ),
-          'Opportunity posted in WorkPlace.',
-        )
+        const input: OpportunityInput = { title: f.title, org: f.org || myName, location: f.location, type: f.type, kind: KINDS[f.kind], pay: f.pay || 'Discuss', description: f.description, tags: f.tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 4) }
+        try {
+          checkOpportunity(input)
+        } catch (err) {
+          return toast((err as Error).message, 'error')
+        }
+        if (JOB_POST.link) {
+          // Pay the posting fee on Stripe; the post is published when they come back.
+          try {
+            sessionStorage.setItem(PENDING_JOB, JSON.stringify({ input, at: Date.now() }))
+          } catch {}
+          const email = world.accounts.find((a) => a.id === world.accountId)?.email
+          window.location.href = JOB_POST.link + (email ? `?prefilled_email=${encodeURIComponent(email)}` : '')
+          return
+        }
+        if (!confirm(`Stripe isn’t connected for job posts yet, so this is a free test post (normally ${formatPrice(JOB_POST.price)}). Continue?`)) return
+        const r = perform((s, now) => createOpportunity(s, input, now, 'test'), 'Opportunity posted in WorkPlace.')
         if (r.ok) {
           closeCreate()
           router.push(`/workplace/opportunity/?id=${r.id}`)
@@ -292,8 +312,11 @@ function OpportunityForm() {
       <TextField label="Pay" value={f.pay} onChange={set('pay')} placeholder="$30–40/hr" />
       <TextField label="Tags" value={f.tags} onChange={set('tags')} placeholder="Design, Remote, Creative" hint="Separate with commas." />
       <TextArea label="Description" value={f.description} onChange={set('description')} placeholder="What will the person do? What are you looking for?" maxLength={4000} required />
+      <p className="rounded-2xl bg-ivory px-4 py-3 text-sm text-navy-soft">
+        Posting costs <span className="font-semibold text-navy">{formatPrice(JOB_POST.price)}</span> per opportunity{JOB_POST.link ? ', paid securely with Stripe.' : ' (test mode — no payment yet).'}
+      </p>
       <Button type="submit" size="lg" className="w-full !text-base">
-        Post opportunity
+        Post opportunity · {formatPrice(JOB_POST.price)}
       </Button>
     </form>
   )

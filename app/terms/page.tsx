@@ -26,7 +26,21 @@ export default function TermsPage() {
         the sale.
       </p>
       <h2>Opportunities in WorkPlace</h2>
-      <p>Posters are responsible for the accuracy and lawfulness of their opportunities. Never pay to apply for a job; report anything suspicious.</p>
+      <p>
+        Posting an opportunity costs a small one-time fee. Posters are responsible for the accuracy and lawfulness of their opportunities. Applying is
+        always free — never pay to apply for a job, and report anything suspicious. Contracts and payments are between the employer and the person
+        hired.
+      </p>
+      <h2>Fees</h2>
+      <p>
+        PLACES charges no listing fees. Sales of physical items that are shipped carry a 1% sales admin fee. Current prices for the creator plan, job
+        posts and sponsored banners are shown where you buy them, and may change with notice.
+      </p>
+      <h2>Sponsored banners</h2>
+      <p>
+        Each Place shows at most one sponsored banner at a time, clearly labelled. Ads must be honest, family-friendly and lawful, and link to a real
+        business. PLACES may decline or remove ads that break these rules.
+      </p>
       <h2>Your content</h2>
       <p>You own what you create. You give PLACES permission to display it so the service can work. You can delete it at any time.</p>
       <h2>No warranty</h2>

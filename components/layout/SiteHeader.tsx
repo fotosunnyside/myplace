@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, GraduationCap, LogOut, Receipt, Settings, UserRound } from 'lucide-react'
+import { Bell, GraduationCap, LogOut, Megaphone, Receipt, Settings, UserRound, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Logo } from '@/components/brand/Logo'
 import { SearchField } from '@/components/search/SearchField'
@@ -122,7 +122,9 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
   const items = [
     { label: 'Your profile', href: '/yourplace', icon: UserRound },
     { label: 'Orders & applications', href: '/activity', icon: Receipt },
+    { label: 'Workrooms', href: '/workrooms', icon: Users },
     { label: 'Teach on PLACES', href: '/teach', icon: GraduationCap },
+    { label: 'Advertise', href: '/advertise', icon: Megaphone },
     { label: 'Settings', href: '/settings', icon: Settings },
   ]
 

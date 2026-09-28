@@ -163,6 +163,8 @@ export interface Product {
   category: 'Handmade' | 'Digital' | 'Home' | 'Wellness' | 'Services'
   /** Seller's own Stripe Payment Link — buyers pay the seller directly. */
   stripeLink?: string
+  /** Physical item shipped by the seller (carries the PLACES sales admin fee). */
+  ships?: boolean
   createdAt: number
 }
 
@@ -171,6 +173,8 @@ export interface Order {
   productId: ID
   buyerId: ID
   total: number
+  /** PLACES sales admin fee in cents (1% on shipped items). */
+  fee?: number
   via: 'stripe' | 'test'
   createdAt: number
 }
@@ -195,6 +199,8 @@ export interface Opportunity {
   pay: string
   description: string
   createdAt: number
+  /** How the job-post fee was paid (missing for seeded posts). */
+  paidVia?: 'stripe' | 'test'
 }
 
 export interface Application {
@@ -257,6 +263,75 @@ export interface Notification {
 /* Whole-world state                                                    */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Ads — one sponsored mini banner per Place                            */
+/* ------------------------------------------------------------------ */
+
+export interface Ad {
+  id: ID
+  ownerId: ID
+  business: string
+  headline: string
+  image: string
+  url: string
+  district: DistrictId
+  plan: 'week' | 'month'
+  startsAt: number
+  endsAt: number
+  via: 'stripe' | 'test'
+  createdAt: number
+}
+
+/* ------------------------------------------------------------------ */
+/* Hiring & Workrooms                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface Invoice {
+  id: ID
+  /** Cents. */
+  amount: number
+  description: string
+  /** Where the employer pays (e.g. the worker's Stripe Payment Link). */
+  payLink?: string
+  status: 'open' | 'paid'
+  createdAt: number
+  paidAt?: number
+}
+
+export interface Contract {
+  id: ID
+  title: string
+  opportunityId?: ID
+  employerId: ID
+  workerId: ID
+  rate: string
+  status: 'active' | 'completed'
+  workroomId: ID
+  invoices: Invoice[]
+  createdAt: number
+}
+
+export interface WorkMessage {
+  id: ID
+  channelId: ID
+  senderId: ID
+  body: string
+  createdAt: number
+}
+
+export interface Workroom {
+  id: ID
+  name: string
+  ownerId: ID
+  memberIds: ID[]
+  channels: { id: ID; name: string }[]
+  messages: WorkMessage[]
+  contractId?: ID
+  /** Last time each member opened the room. */
+  readAt: Record<ID, number>
+  createdAt: number
+}
+
 export interface WorldState {
   version: number
   /** Signed-in account on this device (null = guest). */
@@ -275,6 +350,9 @@ export interface WorldState {
   coursePurchases: CoursePurchase[]
   opportunities: Opportunity[]
   applications: Application[]
+  ads: Ad[]
+  contracts: Contract[]
+  workrooms: Workroom[]
   threads: Thread[]
   saved: Record<ID, SavedItem[]>
   collections: Record<ID, Collection[]>

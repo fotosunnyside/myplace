@@ -82,7 +82,7 @@ export function ImagePicker({
     }
   }
 
-  const frame = shape === 'round' ? 'h-24 w-24 rounded-full' : shape === 'square' ? 'aspect-square w-40 rounded-2xl' : 'aspect-[16/9] w-full rounded-2xl'
+  const frame = shape === 'round' ? 'h-24 w-24 shrink-0 rounded-full' : shape === 'square' ? 'aspect-square w-40 shrink-0 rounded-2xl' : 'aspect-[16/9] min-w-0 flex-1 rounded-2xl'
 
   return (
     <div className="grid gap-1.5">
@@ -92,7 +92,7 @@ export function ImagePicker({
           type="button"
           onClick={() => input.current?.click()}
           aria-describedby={id}
-          className={cn('group relative grid shrink-0 place-items-center overflow-hidden border border-dashed border-teal/40 bg-teal-wash/50 text-teal-deep transition hover:bg-teal-wash', frame)}
+          className={cn('group relative grid place-items-center overflow-hidden border border-dashed border-teal/40 bg-teal-wash/50 text-teal-deep transition hover:bg-teal-wash', frame)}
         >
           {value ? (
             <Image src={value} alt="Selected image" fill unoptimized className="object-cover" />
@@ -104,7 +104,7 @@ export function ImagePicker({
           )}
         </button>
         {value && (
-          <button type="button" onClick={() => onChange(undefined)} className="inline-flex items-center gap-1 text-sm text-muted hover:text-navy">
+          <button type="button" onClick={() => onChange(undefined)} className="inline-flex shrink-0 items-center gap-1 text-sm text-muted hover:text-navy">
             <X className="h-4 w-4" /> Remove
           </button>
         )}

@@ -3,6 +3,8 @@ import { LogoMark } from '@/components/brand/Logo'
 
 const links = [
   { label: 'Explore', href: '/explore' },
+  { label: 'Advertise', href: '/advertise' },
+  { label: 'Teach', href: '/teach' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
 ]

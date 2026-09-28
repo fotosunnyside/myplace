@@ -24,6 +24,9 @@ jobs:
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${{ vars.PLAUSIBLE_DOMAIN }}
       NEXT_PUBLIC_CREATOR_PLAN_LINK: ${{ vars.CREATOR_PLAN_LINK }}
       NEXT_PUBLIC_STRIPE_PORTAL_LINK: ${{ vars.STRIPE_PORTAL_LINK }}
+      NEXT_PUBLIC_JOB_POST_LINK: ${{ vars.JOB_POST_LINK }}
+      NEXT_PUBLIC_AD_WEEK_LINK: ${{ vars.AD_WEEK_LINK }}
+      NEXT_PUBLIC_AD_MONTH_LINK: ${{ vars.AD_MONTH_LINK }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

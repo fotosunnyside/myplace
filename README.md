@@ -51,13 +51,13 @@ plus a Stripe webhook) replaces that layer without touching the UI.
 Buyers pay you directly on Stripe's checkout. When they return, PLACES records the order in their Activity. Stripe's dashboard is the
 source of truth for payments: without a server, PLACES can't independently verify a payment.
 
-### Creator plan: host courses for $2/month
+### Creator plan: host courses for $3/month
 
 Anyone with an active creator plan can publish courses in MindPlace (`/teach`), free or paid. Paid courses show the first lesson as a
 free preview. Learners buy through the **creator's own Stripe Payment Link**, so creators keep 100% of course sales.
 
 To charge for the plan:
-1. In Stripe, create a product "PLACES Creator plan" with a **recurring $2/month** price, then create a **Payment Link** for it.
+1. In Stripe, create a product "PLACES Creator plan" with a **recurring $3/month** price, then create a **Payment Link** for it.
 2. In the Payment Link's **After payment** settings, redirect to `https://fotosunnyside.github.io/myplace/teach/?subscribed=1`.
 3. Optional: in Stripe → **Settings → Billing → Customer portal**, turn on the portal and copy its login link, so creators can manage
    or cancel their plan.
@@ -66,6 +66,33 @@ To charge for the plan:
 
 Until `CREATOR_PLAN_LINK` is set, plans start in clearly labelled test mode. Without a backend, PLACES trusts the return from Stripe
 and can't see renewals or cancellations. Connecting the cloud backend adds a Stripe webhook that keeps plan status in sync.
+
+### Pricing at a glance
+
+All prices live in `lib/config.ts`, so the model is easy to change.
+
+| What | Price | How it's paid today |
+| --- | --- | --- |
+| Creator plan (host courses) | $3/month | Stripe subscription Payment Link (`CREATOR_PLAN_LINK`) |
+| Post an opportunity | $2 per post | Stripe Payment Link (`JOB_POST_LINK`) |
+| Sponsored banner (one per Place) | $10/week or $30/month | Stripe Payment Links (`AD_WEEK_LINK`, `AD_MONTH_LINK`) |
+| Shipped product sales | 1% admin fee, no listing fees | Tracked on every order. Collected automatically once Stripe Connect is on |
+| Course and digital sales | 0% | Paid directly to the creator |
+
+For each paid item, create a Payment Link in Stripe and set its **After payment** redirect:
+- Job post: `…/myplace/workplace/opportunity/?publish=1`
+- Ad: `…/myplace/advertise/?paid=1`
+- Creator plan: `…/myplace/teach/?subscribed=1`
+
+Then add the link as a GitHub repository variable (**Settings → Secrets and variables → Actions → Variables**). Any flow without a
+link runs in clearly labelled test mode.
+
+### Hiring & Workrooms
+
+The person who posted an opportunity can **Hire** an applicant. That creates a **contract** and a **Workroom**: a shared space with
+channels (#general, #updates, and more), members, chat, and a contract panel. The person hired requests payments (optionally with their
+own Stripe Payment Link), and the employer pays and marks them paid. Paying inside PLACES, with automatic payouts to the hire and the
+1% fee collected on shipped sales, uses **Stripe Connect**, which needs the cloud backend.
 
 ## Stack
 

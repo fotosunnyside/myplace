@@ -209,3 +209,63 @@ describe('creators', () => {
     expect(A.deleteCourse(s, r.id).courses.some((c) => c.id === r.id)).toBe(false)
   })
 })
+
+describe('ecosystem: fees, job posts, ads, hiring & workrooms', () => {
+  it('charges a 1% admin fee on shipped items only', () => {
+    let s = A.createShop(joined(), { name: 'Studio', category: 'Art', description: '', image: '/x.webp' }, NOW).state
+    s = A.createProduct(s, { title: 'Vase', description: '', price: 5000, image: '/x.webp', category: 'Handmade', ships: true }, NOW).state
+    const vase = s.products[0]
+    s = A.createProduct(s, { title: 'Template', description: '', price: 1500, image: '/x.webp', category: 'Digital' }, NOW).state
+    s = A.placeOrder(s, vase.id, 'test', NOW)
+    expect(s.orders[0].fee).toBe(50)
+    s = A.placeOrder(s, s.products[0].id, 'test', NOW)
+    expect(s.orders[0].fee).toBeUndefined()
+  })
+
+  it('records how the job-post fee was paid and validates before payment', () => {
+    const input = { title: 'Bookkeeper', org: 'Studio', location: 'Remote', type: 'Part Time' as const, kind: 'job' as const, tags: [], pay: '$30/hr', description: 'Keep our books tidy every month.' }
+    expect(() => A.checkOpportunity({ ...input, description: 'short' })).toThrow(/sentence/)
+    const r = A.createOpportunity(joined(), input, NOW, 'stripe')
+    expect(r.state.opportunities[0].paidVia).toBe('stripe')
+  })
+
+  it('queues ads so each Place shows one at a time', () => {
+    const ad = { business: 'Candle Co', headline: 'Small-batch candles', image: '/x.webp', url: 'https://candle.example', district: 'marketplace' as const, plan: 'week' as const }
+    expect(() => A.checkAd({ ...ad, url: 'http://nope' })).toThrow(/https/)
+    let s = A.createAd(joined(), ad, 'test', NOW).state
+    s = A.createAd(s, { ...ad, business: 'Second' }, 'test', NOW).state
+    expect(A.activeAd(s, 'marketplace', NOW + 1)?.business).toBe('Candle Co')
+    expect(A.activeAd(s, 'marketplace', NOW + 8 * 86_400_000)?.business).toBe('Second')
+    expect(A.activeAd(s, 'workplace', NOW + 1)).toBeUndefined()
+  })
+
+  it('hires an applicant into a workroom with a contract, invoices and payment', () => {
+    let s = joined() // employer
+    const employer = me(s)
+    const posted = A.createOpportunity(s, { title: 'Logo design', org: 'Studio', location: 'Remote', type: 'Project', kind: 'project', tags: [], pay: '$300', description: 'A friendly logo for a small studio.' }, NOW)
+    s = A.signOut(posted.state)
+    s = A.signUp(s, { name: 'Wren Worker', username: 'wren', email: 'wren@example.com' }, NOW)
+    const worker = me(s)
+    s = A.apply(s, posted.id, 'I have designed logos for twenty small shops.', undefined, NOW)
+    const appId = s.applications[0].id
+    expect(() => A.hire(s, appId, NOW)).toThrow(/Only the person who posted/)
+    s = A.signIn(A.signOut(s), 'sam@example.com')
+    const hired = A.hire(s, appId, NOW)
+    s = hired.state
+    const room = s.workrooms.find((w) => w.id === hired.id)!
+    expect(room.memberIds).toEqual([employer, worker])
+    s = A.postWorkMessage(s, room.id, room.channels[0].id, 'Welcome aboard!', NOW)
+    s = A.addChannel(s, room.id, 'Design Reviews').state
+    expect(s.workrooms[0].channels.map((c) => c.name)).toContain('design-reviews')
+    const contract = s.contracts[0]
+    expect(() => A.addInvoice(s, contract.id, { amount: 30000, description: 'Logo' }, NOW)).toThrow(/Only the person hired/)
+    s = A.signIn(A.signOut(s), 'wren@example.com')
+    s = A.addInvoice(s, contract.id, { amount: 30000, description: 'Logo, final files', payLink: 'https://buy.stripe.com/test_x' }, NOW)
+    s = A.signIn(A.signOut(s), 'sam@example.com')
+    s = A.markInvoicePaid(s, contract.id, s.contracts[0].invoices[0].id, NOW)
+    s = A.completeContract(s, contract.id, NOW)
+    expect(s.contracts[0]).toMatchObject({ status: 'completed' })
+    expect(s.contracts[0].invoices[0].status).toBe('paid')
+    expect(() => A.addWorkroomMember(s, room.id, '@nobody_here', NOW)).toThrow(/No one/)
+  })
+})

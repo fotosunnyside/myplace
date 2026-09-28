@@ -201,7 +201,7 @@ export function ActivityPage() {
   const myOpps = world.opportunities.filter((o) => o.postedById === acc.id)
   const learning = enrollmentsOf(world, acc.id)
 
-  const productRow = (orderId: string, productId: string, total: number, via: string, at: number, who?: string) => {
+  const productRow = (orderId: string, productId: string, total: number, via: string, at: number, who?: string, fee?: number) => {
     const p = world.products.find((x) => x.id === productId)
     return (
       <Card key={orderId} className="flex items-center justify-between gap-4 p-4">
@@ -216,6 +216,7 @@ export function ActivityPage() {
         </div>
         <div className="text-right">
           <p className="font-semibold">{formatPrice(total)}</p>
+          {fee ? <p className="text-xs text-muted">1% admin fee {formatPrice(fee)}</p> : null}
           <Tag tone={via === 'stripe' ? 'teal' : 'neutral'}>{via === 'stripe' ? 'Paid via Stripe' : 'Test order'}</Tag>
         </div>
       </Card>
@@ -279,7 +280,7 @@ export function ActivityPage() {
         {tab === 'Selling & hiring' && (
           <>
             <h2 className="mt-2 font-semibold">Sales{myShop ? ` · ${myShop.name}` : ''}</h2>
-            {sales.length ? sales.map((o) => productRow(o.id, o.productId, o.total, o.via, o.createdAt, person(world, o.buyerId).name)) : <p className="text-sm text-muted">{myShop ? 'No sales yet.' : 'You don’t have a shop yet.'}</p>}
+            {sales.length ? sales.map((o) => productRow(o.id, o.productId, o.total, o.via, o.createdAt, person(world, o.buyerId).name, o.fee)) : <p className="text-sm text-muted">{myShop ? 'No sales yet.' : 'You don’t have a shop yet.'}</p>}
             <h2 className="mt-4 font-semibold">Course sales</h2>
             {(() => {
               const mineCourses = world.courses.filter((c) => c.expertId === acc.id)
