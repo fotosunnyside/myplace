@@ -50,6 +50,14 @@ function AuthForm({ req }: { req: AuthRequest }) {
   /** With the backend connected, the cloud identity comes first; the on-device account follows it. */
   const cloud = async () => {
     if (mode === 'join') {
+      // Already has a place on this device (from before the cloud was connected): add the cloud identity to it.
+      const existing = getState().accounts.find((a) => a.email === email.trim().toLowerCase())
+      if (existing) {
+        const { confirmEmail } = await backendSignUp({ email, password, name: existing.name, username: existing.username })
+        const r = perform((s) => signIn(s, existing.email), 'Your place is now connected to the PLACES cloud.')
+        if (r.ok && confirmEmail) toast('Check your email to confirm your account, then sign in to enter live spaces.')
+        return r.ok && done()
+      }
       // Check the local rules (username, email format) before creating anything in the cloud.
       try {
         signUp(getState(), { name, username, email, avatar, location, interests }, Date.now())
