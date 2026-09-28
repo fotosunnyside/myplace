@@ -252,3 +252,54 @@ test('a business can book the sponsored banner in a Place', async ({ page }, inf
   await page.goto('mindplace/')
   await expect(page.getByRole('link', { name: /Sponsored: Candle Co/ })).toBeVisible()
 })
+
+test('YourPlace leads into a live space in MyPlace', async ({ page, context }, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  await context.grantPermissions(['camera', 'microphone'])
+
+  // Guests see the rooms and whether they're open; entering asks them to join.
+  await page.goto('yourplace/')
+  await expect(page.getByRole('heading', { name: 'Live Spaces' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Town Hall' })).toBeVisible()
+  await expect(page.getByText('See who’s around. Drop in and say hello.')).toBeVisible()
+  await expect(page.getByText('Bring your work. Stay focused together.')).toBeVisible()
+  await page.getByRole('button', { name: 'Enter Town Hall' }).click()
+  await page.getByLabel('Your name').fill('Room Tester')
+  await page.getByLabel('Username').fill(`rooms_${info.project.name}`)
+  await page.getByLabel('Email').fill(`rooms_${info.project.name}@example.com`)
+  await page.getByRole('button', { name: 'Create my place' }).click()
+
+  // Straight into the room, as a bubble, with honest media status.
+  await expect(page).toHaveURL(/\/myplace\/space\/\?room=town-hall/)
+  await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
+  await expect(page.getByTestId('room-count')).toHaveText('1 person here')
+  await expect(page.getByRole('button', { name: /^You:/ })).toBeVisible()
+  await expect(page.getByTestId('media-note')).toBeVisible()
+
+  // Mic and camera toggle.
+  const mic = page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: /Mute|Unmute/ })
+  const before = await mic.getAttribute('aria-pressed')
+  await mic.click()
+  await expect(mic).not.toHaveAttribute('aria-pressed', before!)
+
+  // The count on YourPlace is the real one.
+  await page.getByRole('link', { name: /MyPlace/ }).first().click()
+  await expect(page.getByRole('region', { name: /You're in Town Hall/ })).toBeVisible()
+  await expect(page.getByTestId('space-count').first()).toHaveText('1 person here')
+
+  // The Accountability Room greets you and starts quiet.
+  await page.goto('myplace/space/?room=accountability-room')
+  await page.getByRole('button', { name: 'Start Working' }).click()
+  await expect(page.getByText('Bring something you need to finish. Work quietly alongside other people and get it done.')).toBeVisible()
+  await expect(page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Unmute' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Leave' }).click()
+  await expect(page).toHaveURL(/\/myplace\/$/)
+  await expect(page.getByTestId('space-count').first()).toHaveText('No one here yet')
+
+  // No admin tools without the backend and an admin account.
+  await page.goto('admin/spaces/')
+  await expect(page.getByText('Admin needs the PLACES backend')).toBeVisible()
+  expect(errors).toEqual([])
+})

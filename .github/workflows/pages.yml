@@ -37,9 +37,19 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Journeys run against the on-device build, so they pass whether or not the backend is connected.
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      # The deployed build connects to the PLACES backend when its public settings are present.
+      # Only public values belong here: the Supabase URL, the anon key and the media provider's name.
+      - name: Build for deploy
+        if: github.event_name != 'pull_request'
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_MEDIA_PROVIDER: ${{ vars.MEDIA_PROVIDER }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -51,6 +61,40 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           path: out
+
+  # Virtual Spaces against a real Supabase stack: RLS, admin rights, storage, atomic capacity,
+  # then the admin → member journey in a browser. Doesn't gate the deploy.
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+      - run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Export local stack settings
+        run: supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' | sed 's/"//g' >> "$GITHUB_ENV"
+      - run: npm run test:supabase
+        env:
+          SUPABASE_TEST_URL: ${{ env.API_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_TEST_SERVICE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+      - run: npm run build
+        env:
+          PAGES_BASE_PATH: /myplace
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test -c playwright.cloud.config.ts
+        env:
+          SUPABASE_TEST_URL: ${{ env.API_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_TEST_SERVICE_KEY: ${{ env.SERVICE_ROLE_KEY }}
 
   deploy:
     if: github.event_name != 'pull_request'

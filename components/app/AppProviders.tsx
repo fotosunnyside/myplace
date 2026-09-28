@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
 import { useEffect } from 'react'
 import { hydrate } from '@/lib/store/store'
+import { initBackendAuth } from '@/lib/backend/auth'
+import { RoomPill } from '@/components/spaces/RoomPill'
 import { useToasts } from '@/lib/ui'
 import { cn } from '@/lib/cn'
 import { AuthDialog } from './AuthDialog'
@@ -13,12 +15,14 @@ import { CreateDialogs } from './CreateDialogs'
 export function AppProviders() {
   useEffect(() => {
     hydrate()
+    initBackendAuth()
   }, [])
 
   return (
     <>
       <AuthDialog />
       <CreateDialogs />
+      <RoomPill />
       <Toaster />
     </>
   )

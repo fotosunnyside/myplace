@@ -1,0 +1,345 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SpacesBackend } from '@/lib/spaces/backend'
+import { layoutBubbles } from '@/lib/spaces/layout'
+import { MediaDeviceError, type MediaParticipant, type MediaProvider } from '@/lib/spaces/media/types'
+import { PREVIEW_SPACES } from '@/lib/spaces/preview'
+import { featuredSpaces, peopleHere, roomBackground, roomBehaviour, validatePatch, checkBackgroundFile } from '@/lib/spaces/rooms'
+import { patchToRow, spaceErrorCode, spaceFromRow, type SpaceRow } from '@/lib/spaces/rows'
+import { RoomSession } from '@/lib/spaces/session'
+import { SpaceError, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
+
+const [townHall, accountability] = PREVIEW_SPACES
+
+describe('room configuration', () => {
+  it('maps database rows, including settings, without trusting unknown room types', () => {
+    const row: SpaceRow = {
+      id: 'x', name: 'Town Hall', slug: 'town-hall', description: 'd', room_type: 'nonsense', visibility: 'members', background_style: 'custom',
+      background_url: 'https://cdn/x.webp', background_path: 'x/1.webp', background_focus_x: 30, background_focus_y: 70, max_participants: 25,
+      is_active: true, allow_camera: false, allow_microphone: true, is_official: true, sort_order: 1, parent_space_id: null, instance_number: 1,
+      settings: { speaking_mode: 'moderated', welcome: 'Hi', start_muted: true }, created_by: null, created_at: '', updated_at: '',
+    }
+    const s = spaceFromRow(row)
+    expect(s).toMatchObject({ roomType: 'social', maxParticipants: 25, allowCamera: false, focusX: 30, settings: { speakingMode: 'moderated', welcome: 'Hi', startMuted: true } })
+  })
+
+  it('only sends admin-editable columns', () => {
+    const row = patchToRow({ name: 'A', maxParticipants: 30, isActive: false, ...({ isOfficial: false, createdBy: 'me' } as object) })
+    expect(row).toEqual({ name: 'A', max_participants: 30, is_active: false })
+  })
+
+  it('validates capacity and names like the database does', () => {
+    expect(validatePatch({ maxParticipants: 25 })).toEqual({})
+    expect(validatePatch({ maxParticipants: 1 }).maxParticipants).toBeTruthy()
+    expect(validatePatch({ maxParticipants: 501 }).maxParticipants).toBeTruthy()
+    expect(validatePatch({ maxParticipants: 12.5 }).maxParticipants).toBeTruthy()
+    expect(validatePatch({ maxParticipants: NaN }).maxParticipants).toBeTruthy()
+    expect(validatePatch({ name: '  ' }).name).toBeTruthy()
+    expect(validatePatch({ description: 'x'.repeat(281) }).description).toBeTruthy()
+  })
+
+  it('accepts only web image formats for backgrounds', () => {
+    expect(checkBackgroundFile({ type: 'image/webp', size: 1000 })).toBeNull()
+    expect(checkBackgroundFile({ type: 'image/png', size: 1000 })).toBeNull()
+    expect(checkBackgroundFile({ type: 'image/gif', size: 1000 })).toMatch(/JPEG, PNG or WebP/)
+    expect(checkBackgroundFile({ type: 'image/jpeg', size: 30 * 1024 * 1024 })).toMatch(/20 MB/)
+  })
+
+  it('resolves backgrounds from configuration, not from the room slug', () => {
+    expect(roomBackground({ ...townHall, backgroundStyle: 'custom', backgroundUrl: 'https://x/y.webp' })).toMatchObject({ kind: 'image', src: 'https://x/y.webp', isDefault: false })
+    expect(roomBackground({ ...townHall, backgroundStyle: 'none' })).toEqual({ kind: 'none' })
+    const renamed = roomBackground({ ...accountability, slug: 'anything' } as VirtualSpace)
+    expect(renamed).toMatchObject({ kind: 'image', isDefault: true, src: '/districts/mindplace-banner.webp' })
+  })
+
+  it('derives calls to action and quiet arrival from the room type', () => {
+    expect(roomBehaviour(townHall).cta).toBe('Enter Town Hall')
+    expect(roomBehaviour({ ...townHall, name: 'Main Square' }).cta).toBe('Enter Main Square')
+    expect(roomBehaviour(accountability)).toMatchObject({ cta: 'Start Working', quiet: true, startWithMic: false, startWithCamera: true })
+    expect(roomBehaviour({ ...townHall, allowCamera: false }).startWithCamera).toBe(false)
+  })
+
+  it('features top-level official rooms only, in their configured order', () => {
+    const overflow = { ...townHall, id: 'o', slug: 'town-hall-2', name: 'Town Hall 2', parentSpaceId: townHall.id, instanceNumber: 2 }
+    const member = { ...townHall, id: 'm', slug: 'mine', isOfficial: false }
+    expect(featuredSpaces([accountability, overflow, member, townHall]).map((s) => s.slug)).toEqual(['town-hall', 'accountability-room'])
+  })
+
+  it('never fakes counts', () => {
+    expect(peopleHere(12)).toBe('12 people here')
+    expect(peopleHere(1)).toBe('1 person here')
+    expect(peopleHere(0)).toBe('No one here yet')
+  })
+
+  it('maps database errors to room states', () => {
+    expect(spaceErrorCode({ code: 'PLC04' })).toBe('full')
+    expect(spaceErrorCode({ code: 'PLC03' })).toBe('closed')
+    expect(spaceErrorCode({ message: 'new row violates row-level security policy' })).toBe('forbidden')
+    expect(spaceErrorCode({ message: 'TypeError: Failed to fetch' })).toBe('network')
+  })
+})
+
+describe('bubble layout', () => {
+  const people = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `p${i}` }))
+  const overlap = (spots: { x: number; y: number; size: number }[]) => {
+    let worst = 0
+    for (let i = 0; i < spots.length; i++)
+      for (let j = i + 1; j < spots.length; j++) {
+        const d = Math.hypot(spots[i].x - spots[j].x, spots[i].y - spots[j].y)
+        worst = Math.max(worst, spots[i].size - d)
+      }
+    return worst
+  }
+
+  it('centres one person and keeps a crowd inside the stage without piling up', () => {
+    const one = layoutBubbles(people(1), 1200, 700, { minSize: 76, maxSize: 184 })
+    expect(one.spots[0]).toMatchObject({ x: 600, y: 350, size: 184 })
+    for (const [w, h] of [
+      [1200, 700],
+      [390, 560],
+    ]) {
+      const r = layoutBubbles(people(20), w, h, { minSize: 56, maxSize: 184 })
+      expect(r.spots).toHaveLength(20)
+      expect(overlap(r.spots)).toBeLessThan(r.size * 0.1)
+      for (const s of r.spots) {
+        expect(s.x - s.size / 2).toBeGreaterThanOrEqual(-1)
+        expect(s.x + s.size / 2).toBeLessThanOrEqual(w + 1)
+      }
+    }
+  })
+
+  it('keeps everyone in their spot when someone new arrives', () => {
+    const before = layoutBubbles(people(5), 1000, 600, { minSize: 60, maxSize: 120 })
+    const after = layoutBubbles(people(6), 1000, 600, { minSize: 60, maxSize: 120 })
+    if (after.size === before.size) expect(after.spots.slice(0, 5)).toEqual(before.spots)
+  })
+
+  it('lets very full rooms scroll instead of shrinking people to dots', () => {
+    const r = layoutBubbles(people(120), 360, 500, { minSize: 56, maxSize: 128 })
+    expect(r.size).toBe(56)
+    expect(r.height).toBeGreaterThan(500)
+  })
+
+  it('gathers each zone around its own spot', () => {
+    const r = layoutBubbles([{ id: 'a', zone: 'x' }, { id: 'b', zone: 'y' }], 1000, 600, { minSize: 60, maxSize: 120 })
+    expect(r.spots[0].x).toBeLessThan(500)
+    expect(r.spots[1].x).toBeGreaterThan(500)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Room session                                                          */
+/* ------------------------------------------------------------------ */
+
+class FakeMedia implements MediaProvider {
+  name = 'fake'
+  carriesRemoteMedia = false
+  needsToken = false
+  state: MediaProvider['state'] = 'disconnected'
+  localParticipant: MediaParticipant | null = null
+  remoteParticipants: MediaParticipant[] = []
+  cameraError: MediaDeviceError | null = null
+  micError: MediaDeviceError | null = null
+  private ls = new Set<() => void>()
+  subscribe(l: () => void) {
+    this.ls.add(l)
+    return () => this.ls.delete(l)
+  }
+  private emit() {
+    this.ls.forEach((l) => l())
+  }
+  async connectToRoom(o: { identity: string; name: string }) {
+    this.state = 'connected'
+    this.localParticipant = { identity: o.identity, name: o.name, isLocal: true, cameraOn: false, micOn: false, speaking: false, videoStream: null, audioStream: null }
+    this.emit()
+  }
+  async disconnectFromRoom() {
+    this.state = 'disconnected'
+    this.localParticipant = null
+    this.emit()
+  }
+  async enableCamera() {
+    if (this.cameraError) throw this.cameraError
+    this.localParticipant = { ...this.localParticipant!, cameraOn: true }
+    this.emit()
+  }
+  async disableCamera() {
+    this.localParticipant = this.localParticipant && { ...this.localParticipant, cameraOn: false }
+    this.emit()
+  }
+  async unmuteMicrophone() {
+    if (this.micError) throw this.micError
+    this.localParticipant = { ...this.localParticipant!, micOn: true }
+    this.emit()
+  }
+  async muteMicrophone() {
+    this.localParticipant = this.localParticipant && { ...this.localParticipant, micOn: false }
+    this.emit()
+  }
+}
+
+function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
+  const room = new Map<string, SpacePresence>()
+  for (let i = 0; i < (opts.others ?? 0); i++) room.set(`o${i}`, { userId: `o${i}`, displayName: `Other ${i}`, avatarUrl: null, cameraOn: false, micOn: false, zone: null, role: 'participant', joinedAt: `0${i}`, lastSeenAt: '' })
+  const state = { online: true, admitted: true, closed: false, capacity: opts.capacity ?? 20, touches: [] as { cameraOn: boolean; micOn: boolean }[], left: 0 }
+  const b: SpacesBackend = {
+    mode: 'preview',
+    listSpaces: async () => PREVIEW_SPACES,
+    onSpacesChange: () => () => {},
+    occupancy: async () => ({}),
+    onOccupancyChange: () => () => {},
+    roster: async () => [...room.values()],
+    onRosterChange: () => () => {},
+    identity: () => 'me',
+    async join(_id, me) {
+      if (!state.online) throw new SpaceError('network', 'offline')
+      if (state.closed) throw new SpaceError('closed', 'This room is currently closed.')
+      if (!room.has('me') && room.size >= state.capacity) throw new SpaceError('full', 'This room is currently full.')
+      room.set('me', { userId: 'me', displayName: me.name, avatarUrl: null, cameraOn: false, micOn: false, zone: null, role: 'participant', joinedAt: '9', lastSeenAt: '' })
+      state.admitted = true
+    },
+    async touch(_id, s) {
+      if (!state.online) throw new SpaceError('network', 'offline')
+      state.touches.push(s)
+      return state.admitted && !state.closed
+    },
+    async leave() {
+      state.left++
+      room.delete('me')
+    },
+    mediaToken: async () => null,
+    updateSpace: async () => townHall,
+    uploadBackground: async () => ({ url: '', path: '' }),
+    removeBackgroundObject: async () => {},
+  }
+  return { backend: b, state, room }
+}
+
+describe('room session', () => {
+  let media: FakeMedia
+  let watchers: ((s: VirtualSpace | null) => void)[]
+  const make = (backend: SpacesBackend) => {
+    media = new FakeMedia()
+    watchers = []
+    return new RoomSession({
+      backend,
+      createMedia: () => media,
+      watchSpace: (_id, cb) => {
+        watchers.push(cb)
+        return () => {}
+      },
+    })
+  }
+  const me = { name: 'Josie Rivers' }
+  const settle = () => new Promise((r) => setTimeout(r, 0))
+
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] }))
+  afterEach(() => vi.useRealTimers())
+
+  it('enters, turns on the camera and mic it was asked for, and reports them to presence', async () => {
+    const { backend, state } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, me, { camera: true, mic: true })
+    expect(s.get()).toMatchObject({ phase: 'in-room', camera: 'on', mic: 'on', carriesRemoteMedia: false })
+    await settle()
+    expect(state.touches.at(-1)).toEqual({ cameraOn: true, micOn: true })
+  })
+
+  it('turns people away when the room is full, using the configured capacity', async () => {
+    const { backend } = fakeBackend({ capacity: 3, others: 3 })
+    const s = make(backend)
+    await s.enter({ ...townHall, maxParticipants: 3 }, me, { camera: false, mic: false })
+    expect(s.get()).toMatchObject({ phase: 'full', message: 'This room is currently full.' })
+  })
+
+  it('does not let people into a closed room', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    await s.enter({ ...townHall, isActive: false }, me, { camera: false, mic: false })
+    expect(s.get().phase).toBe('closed')
+  })
+
+  it('keeps going audio-only when the camera is denied', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    media.cameraError = new MediaDeviceError('camera', 'denied')
+    await s.enter(townHall, me, { camera: true, mic: true })
+    expect(s.get()).toMatchObject({ phase: 'in-room', camera: 'denied', mic: 'on' })
+  })
+
+  it('reports a denied microphone without crashing', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    media.micError = new MediaDeviceError('microphone', 'denied')
+    await s.enter(townHall, me, { camera: false, mic: true })
+    expect(s.get()).toMatchObject({ phase: 'in-room', mic: 'denied' })
+  })
+
+  it('respects room policy: no camera when the room turns cameras off, even mid-visit', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    await s.enter({ ...townHall, allowCamera: false }, me, { camera: true, mic: false })
+    expect(s.get().camera).toBe('blocked')
+    await s.setCamera(true)
+    expect(s.get().camera).toBe('blocked')
+
+    const s2 = make(fakeBackend().backend)
+    await s2.enter(townHall, me, { camera: true, mic: false })
+    expect(s2.get().camera).toBe('on')
+    watchers.forEach((w) => w({ ...townHall, allowCamera: false, name: 'Town Square' }))
+    expect(s2.get()).toMatchObject({ camera: 'blocked', space: { name: 'Town Square' } })
+  })
+
+  it('sends everyone out when an admin closes the room', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, me, { camera: false, mic: false })
+    watchers.forEach((w) => w({ ...townHall, isActive: false }))
+    expect(s.get().phase).toBe('closed')
+    expect(media.state).toBe('disconnected')
+  })
+
+  it('reconnects after a dropped connection, and gives up after a minute', async () => {
+    const { backend, state } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, me, { camera: false, mic: false })
+    state.online = false
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(s.get().phase).toBe('reconnecting')
+    state.online = true
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(s.get().phase).toBe('in-room')
+
+    state.online = false
+    await vi.advanceTimersByTimeAsync(90_000)
+    expect(s.get().phase).toBe('lost')
+  })
+
+  it('takes its place back after timing out, or explains why it cannot', async () => {
+    const { backend, state, room } = fakeBackend({ capacity: 2 })
+    const s = make(backend)
+    await s.enter(townHall, me, { camera: false, mic: false })
+    state.admitted = false
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(s.get().phase).toBe('in-room')
+
+    // Someone took the last place while we were away.
+    state.admitted = false
+    room.delete('me')
+    room.set('x', { ...room.values().next().value!, userId: 'x' })
+    room.set('y', { ...room.values().next().value!, userId: 'y' })
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(s.get().phase).toBe('full')
+  })
+
+  it('stays in the room across page changes, and leaving gives the place back', async () => {
+    const { backend, state } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, me, { camera: false, mic: false })
+    await s.enter(townHall, me, { camera: false, mic: false }) // coming back to the room page
+    expect(state.left).toBe(0)
+    expect(s.get().phase).toBe('in-room')
+    await s.leave()
+    expect(state.left).toBe(1)
+    expect(s.get().phase).toBe('idle')
+  })
+})

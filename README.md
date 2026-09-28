@@ -33,6 +33,7 @@ Everything below is real, saved, and works on the live GitHub Pages site:
 - **Messages, notifications, search:** one inbox across Places, a notification center, and search across people, courses, discussions,
   shops, products, jobs and posts.
 - **Activity:** your orders, applications, learning progress, sales and applicants in one place.
+- **MyPlace & Virtual Spaces:** Town Hall and the Accountability Room, with live presence, capacity and an admin editor (see below).
 
 ### Local-first for now
 
@@ -94,6 +95,48 @@ channels (#general, #updates, and more), members, chat, and a contract panel. Th
 own Stripe Payment Link), and the employer pays and marks them paid. Paying inside PLACES, with automatic payouts to the hire and the
 1% fee collected on shipped sales, uses **Stripe Connect**, which needs the cloud backend.
 
+### Virtual Spaces: Town Hall & the Accountability Room
+
+Live places you **enter** together, not video calls. They live in **MyPlace** (`/myplace`, rooms at `/myplace/space/?room=<slug>`),
+with a **Live Spaces** section on YourPlace. Both launch rooms are free for registered members.
+
+- **One engine, many rooms.** Every room is a row in `public.virtual_spaces`; Town Hall and the Accountability Room are simply the
+  first two official rows. Behaviour comes from configuration (room type, settings), never from a slug, so course rooms,
+  masterminds, overflow rooms ("Town Hall 2", via `parent_space_id` / `instance_number`) and member-created rooms reuse it.
+- **Inside a room** people are round bubbles over the room's background, placed like a gathering (grouped by `zone`, ready for
+  conversation circles). Controls are just mic, camera and leave. Your place in the room follows you while you look around other
+  Places (a small pill brings you back).
+- **Presence and capacity** are enforced by the database: `join_virtual_space()` locks the room row, so simultaneous arrivals can't
+  overrun `max_participants`. Clients heartbeat every 15 s; anyone silent for 45 s stops counting (no ghosts), and closing a room
+  releases everyone. Counts on YourPlace are real, over Supabase Realtime.
+- **Admin → Virtual Spaces** (`/admin/spaces`): name, description, capacity, live/closed, cameras, microphones and the background
+  (upload, preview on laptop and phone, focal point, replace, remove, reset). Saves go straight to the database and reach open
+  rooms live. No code, commit or redeploy.
+
+**Live video/audio.** Media never goes through Supabase. The UI talks only to the `MediaProvider` interface
+(`lib/spaces/media/types.ts`). Until a WebRTC provider is chosen, rooms use `DeviceMediaProvider`: presence, room state and
+your own camera/mic are fully working, and the room says plainly that video between people isn't on yet. To connect a provider:
+add an adapter in `lib/spaces/media/`, register it in `lib/spaces/media/index.ts`, set `MEDIA_PROVIDER`, and implement token
+minting in `supabase/functions/virtual-space-token` (provider secrets live only in that function's secrets).
+
+**Connecting the backend**
+1. Create a Supabase project, then run `supabase/migrations/*.sql` (SQL editor, or `supabase link && supabase db push`).
+   This creates the tables, RLS, functions, realtime publication, the `virtual-space-backgrounds` bucket (public read, 5 MB,
+   JPEG/PNG/WebP, admin-only writes) and the two launch rooms.
+2. Make yourself an admin (SQL editor, runs as the service role):
+   `insert into public.admin_users (user_id) select id from auth.users where email = 'you@example.com';`
+3. In GitHub → **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+   (public values). The next deploy connects; joining then asks for a password.
+4. In Supabase → **Authentication → URL Configuration**, add the site URL (`https://fotosunnyside.github.io/myplace/`).
+5. Later, for live video: `supabase functions deploy virtual-space-token`, `supabase secrets set MEDIA_PROVIDER=… MEDIA_API_KEY=…
+   MEDIA_API_SECRET=… MEDIA_SERVER_URL=…`, and the repository variable `MEDIA_PROVIDER`.
+
+Without the backend (today's GitHub Pages build) the rooms run as an on-device preview: presence covers this device's tabs, and
+admin editing is unavailable, because it relies on the database's admin rules, not a switch in the browser.
+
+Tests: `npm test` (room rules, layout, session states), `npm run test:supabase` (RLS, admin rights, storage, atomic capacity,
+ghosts against `npx supabase start`) and `npx playwright test -c playwright.cloud.config.ts` (admin → member journey).
+
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · idb-keyval · Vitest · Playwright.
@@ -114,12 +157,15 @@ app/                     routes: districts + detail pages (course, discussion, p
                          notifications, search, people, activity, settings, privacy, terms
 components/
   world/                 PlacesWorld (desktop/tablet), MobileWorld, DistrictLabel, ambient layers, fly-in transition
+  spaces/ admin/         Virtual Spaces (cards, room, pill, MyPlace) and the admin dashboard / room editor
   districts/             DistrictBanner, preview panels, DistrictPage shell, PlaceCards, apps/ (one per district)
   layout/                SiteHeader, MobileTopBar / MobileTabBar / CreateSheet, HomeHero, MobileHome
   cards/ profile/ search/ ui/ brand/
 lib/
   types.ts               domain types, incl. PlacesIdentity (the future PLACES Passport)
   store/                 local-first world: seed, pure actions, selectors, IndexedDB persistence, React hooks
+  backend/               Supabase client (lazy) and cloud session / admin status
+  spaces/                Virtual Spaces: room model, backends (cloud + preview), session, layout, media providers
   world/districts.ts     world coordinate system, hotspots, label plates, layer rects, banner title positions
 public/world/            world-base, per-district layers, balloon, clouds, foreground, mobile-world
 public/districts/        district banners and "Continue in…" card art

@@ -2,15 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, GraduationCap, LogOut, Megaphone, Receipt, Settings, UserRound, Users } from 'lucide-react'
+import { Bell, DoorOpen, GraduationCap, LogOut, Megaphone, Receipt, Settings, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Logo } from '@/components/brand/Logo'
 import { SearchField } from '@/components/search/SearchField'
 import { Avatar, Button } from '@/components/ui/primitives'
 import { signOut } from '@/lib/store/actions'
+import { leaveRoomAndSignOut } from '@/lib/spaces/signout'
 import { perform, useHydrated, useWorld } from '@/lib/store/hooks'
 import { me, unreadNotifications, unreadThreads } from '@/lib/store/selectors'
 import { openAuth, openCreate } from '@/lib/ui'
+import { useAdminStatus } from '@/lib/backend/auth'
 import { cn } from '@/lib/cn'
 
 export const primaryNav = [
@@ -106,6 +108,7 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const admin = useAdminStatus() === 'admin'
 
   useEffect(() => {
     if (!open) return
@@ -121,11 +124,13 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
 
   const items = [
     { label: 'Your profile', href: '/yourplace', icon: UserRound },
+    { label: 'MyPlace · Live spaces', href: '/myplace', icon: DoorOpen },
     { label: 'Orders & applications', href: '/activity', icon: Receipt },
     { label: 'Workrooms', href: '/workrooms', icon: Users },
     { label: 'Teach on PLACES', href: '/teach', icon: GraduationCap },
     { label: 'Advertise', href: '/advertise', icon: Megaphone },
     { label: 'Settings', href: '/settings', icon: Settings },
+    ...(admin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
   ]
 
   return (
@@ -145,6 +150,7 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
             role="menuitem"
             onClick={() => {
               setOpen(false)
+              void leaveRoomAndSignOut()
               perform(signOut, 'Signed out.')
               router.push('/')
             }}

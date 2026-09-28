@@ -10,6 +10,7 @@ import { SearchField } from '@/components/search/SearchField'
 import { ChipPicker, ImagePicker, TextArea, TextField } from '@/components/ui/fields'
 import { Avatar, Button, ButtonLink, Card, SectionHeader, Tag } from '@/components/ui/primitives'
 import { deleteAccount, markAllNotificationsRead, signOut, updateProfile } from '@/lib/store/actions'
+import { leaveRoomAndSignOut } from '@/lib/spaces/signout'
 import { perform, useHydrated, useWorld } from '@/lib/store/hooks'
 import { enrollmentsOf, formatPrice, me, person, personByUsername, search } from '@/lib/store/selectors'
 import { resetDevice } from '@/lib/store/store'
@@ -442,6 +443,7 @@ function SettingsForm({ acc }: { acc: Account }) {
           <Button
             variant="outline"
             onClick={() => {
+              void leaveRoomAndSignOut()
               perform(signOut, 'Signed out.')
               router.push('/')
             }}
@@ -458,6 +460,7 @@ function SettingsForm({ acc }: { acc: Account }) {
               className="!border-coral/50 !text-[#a2412c]"
               onClick={() => {
                 if (confirm('Delete your account and everything you created? This cannot be undone.')) {
+                  void leaveRoomAndSignOut()
                   perform(deleteAccount, 'Your account was deleted.')
                   router.push('/')
                 }

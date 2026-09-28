@@ -10,3 +10,6 @@ tools/.cache/
 out/
 test-results/
 playwright-report/
+
+supabase/.temp/
+supabase/.branches/

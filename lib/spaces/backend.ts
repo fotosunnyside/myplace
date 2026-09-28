@@ -1,0 +1,49 @@
+import type { SpacePatch, SpacePresence, VirtualSpace } from './types'
+
+/**
+ * Everything Virtual Spaces needs from a backend. The UI and room session only talk to this,
+ * so the cloud implementation (Supabase) and the on-device preview are interchangeable.
+ */
+export interface SpacesBackend {
+  readonly mode: 'cloud' | 'preview'
+
+  /* Rooms */
+  listSpaces(): Promise<VirtualSpace[]>
+  /** Fires when any room's configuration changes (admin edits apply live). */
+  onSpacesChange(cb: () => void): () => void
+
+  /* Presence */
+  /** Current head-count per room id. */
+  occupancy(): Promise<Record<string, number>>
+  onOccupancyChange(cb: () => void): () => void
+  roster(spaceId: string): Promise<SpacePresence[]>
+  onRosterChange(spaceId: string, cb: () => void): () => void
+  /** Takes a place in the room, atomically capacity-checked. Throws SpaceError. */
+  join(spaceId: string, me: { name: string; avatar?: string }): Promise<void>
+  /** Heartbeat. False when the place has been lost (timed out, room closed). Throws SpaceError('network'). */
+  touch(spaceId: string, state: { cameraOn: boolean; micOn: boolean }): Promise<boolean>
+  /** `keepalive` survives the page closing. */
+  leave(spaceId: string, opts?: { keepalive?: boolean }): Promise<void>
+  /** Whose presence this device reports (the signed-in identity), or null when not signed in. */
+  identity(): string | null
+
+  /* Media */
+  /** Short-lived media-provider token for someone admitted to the room; null when no provider is configured. */
+  mediaToken(spaceId: string): Promise<MediaToken | null>
+
+  /* Management — every call is authorized by the backend itself */
+  updateSpace(id: string, patch: SpacePatch): Promise<VirtualSpace>
+  uploadBackground(spaceId: string, file: Blob): Promise<{ url: string; path: string }>
+  removeBackgroundObject(path: string): Promise<void>
+}
+
+export interface MediaToken {
+  provider: string
+  token: string
+  serverUrl?: string
+  expiresAt: string
+}
+
+/** How long without a heartbeat before someone no longer counts (matches public.virtual_space_stale_after()). */
+export const STALE_AFTER_MS = 45_000
+export const HEARTBEAT_MS = 15_000
