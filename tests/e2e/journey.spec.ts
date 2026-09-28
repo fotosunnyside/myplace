@@ -106,3 +106,54 @@ test('district labels fly into their Place', async ({ page }) => {
   await expect(page).toHaveURL(/workplace\/?$/)
   await expect(page.getByRole('heading', { name: 'WorkPlace' })).toBeVisible()
 })
+
+test('a creator can subscribe, publish a paid course and a learner can unlock it', async ({ page }, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  page.on('dialog', (d) => d.accept())
+  const username = `creator_${info.project.name}`
+
+  await page.goto('teach/')
+  await page.getByRole('button', { name: 'Start teaching' }).click()
+  await page.getByLabel('Your name').fill('Cora Creator')
+  await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Email').fill(`${username}@example.com`)
+  await page.getByRole('button', { name: 'Create my place' }).click()
+  await expect(page.getByText('Test creator plan started.')).toBeVisible()
+  await expect(page.getByText('Your first course is waiting.')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Create a course' }).click()
+  await page.locator('input[type=file]').first().setInputFiles('tests/e2e/fixture.png')
+  await expect(page.getByRole('img', { name: 'Selected image' })).toBeVisible()
+  await page.getByLabel('Title', { exact: true }).fill('Watercolor Basics')
+  await page.getByRole('radio', { name: /Paid/ }).click()
+  await page.getByLabel('Price (USD)').fill('19')
+  await page.getByLabel('Lesson title').fill('Materials')
+  await page.getByLabel('Lesson content').fill('Brushes, paper and three paints.')
+  await page.getByRole('button', { name: 'Add lesson' }).click()
+  await page.getByLabel('Lesson title').nth(1).fill('First wash')
+  await page.getByLabel('Lesson content').nth(1).fill('Wet the paper and let the colour flow.')
+  await page.getByRole('button', { name: 'Publish course' }).click()
+  await expect(page).toHaveURL(/mindplace\/course\/\?id=crs_/)
+  await expect(page.getByRole('heading', { name: 'Watercolor Basics' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Edit your course/ })).toBeVisible()
+  const courseUrl = page.url()
+  await page.waitForTimeout(350)
+
+  // A second person buys it
+  await page.goto('settings/')
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.goto(courseUrl)
+  await page.getByRole('button', { name: /Get course · \$19/ }).click()
+  await page.getByLabel('Your name').fill('Lee Learner')
+  await page.getByLabel('Username').fill(`learner_${info.project.name}`)
+  await page.getByLabel('Email').fill(`learner_${info.project.name}@example.com`)
+  await page.getByRole('button', { name: 'Create my place' }).click()
+  // Joining resumes the purchase they started
+  await expect(page.getByText(/Test purchase complete/)).toBeVisible()
+  await expect(page.getByLabel('Locked')).toHaveCount(0)
+  await page.getByRole('button', { name: /Mark “First wash” as done/ }).click()
+  await expect(page.getByText('1 of 2 lessons complete')).toBeVisible()
+
+  expect(errors).toEqual([])
+})

@@ -77,6 +77,8 @@ export function migrate(saved: WorldState, now: number): WorldState {
     collections: saved.collections ?? {},
     notifications: saved.notifications ?? {},
     orders: saved.orders ?? [],
+    coursePurchases: saved.coursePurchases ?? [],
+    courses: [...(saved.courses ?? []).filter((c) => mine.has(c.expertId)), ...fresh.courses],
     applications: saved.applications ?? [],
     threads: saved.threads ?? [],
     posts: [...saved.posts.filter((p) => mine.has(p.authorId)), ...fresh.posts],

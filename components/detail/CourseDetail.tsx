@@ -1,24 +1,45 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { Check, ChevronDown, Clock, Radio, Users } from 'lucide-react'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Check, ChevronDown, Clock, CreditCard, Lock, Pencil, Radio, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { SaveButton } from '@/components/cards'
 import { Picture } from '@/components/ui/Picture'
-import { Avatar, Button, Card } from '@/components/ui/primitives'
-import { enroll, toggleLesson } from '@/lib/store/actions'
-import { perform, useNow, useWorld, withAuth } from '@/lib/store/hooks'
-import { count, enrollmentsOf, formatCount, person, timeUntil } from '@/lib/store/selectors'
+import { Avatar, Button, ButtonLink, Card } from '@/components/ui/primitives'
+import { canAccessCourse, enroll, purchaseCourse, toggleLesson } from '@/lib/store/actions'
+import { perform, useHydrated, useNow, useWorld, withAuth } from '@/lib/store/hooks'
+import { count, enrollmentsOf, formatCount, formatPrice, person, timeUntil } from '@/lib/store/selectors'
 import { cn } from '@/lib/cn'
 import { NotFoundHere, Shell } from './Shell'
 
+const PENDING = 'places:pending-course'
+
 export function CourseDetail() {
-  const id = useSearchParams().get('id')
+  const params = useSearchParams()
+  const id = params.get('id')
+  const paid = params.get('paid') === '1'
+  const router = useRouter()
   const world = useWorld()
+  const ready = useHydrated()
   const now = useNow()
+  const handled = useRef(false)
   const [open, setOpen] = useState<string | null>(null)
   const c = world.courses.find((x) => x.id === id)
+
+  // Returning from the creator's Stripe checkout: record the purchase this device started.
+  useEffect(() => {
+    if (!ready || !paid || !c || handled.current) return
+    handled.current = true
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null') as { courseId: string; at: number } | null
+      if (pending?.courseId === c.id && Date.now() - pending.at < 6 * 3_600_000 && world.accountId) {
+        perform((s, t) => purchaseCourse(s, c.id, 'stripe', t), 'Payment complete — enjoy your course!')
+        sessionStorage.removeItem(PENDING)
+      }
+    } catch {}
+    router.replace(`/mindplace/course/?id=${c.id}`)
+  }, [ready, paid, c, world.accountId, router])
 
   if (!c)
     return (
@@ -32,6 +53,19 @@ export function CourseDetail() {
   const done = e?.completed.length ?? 0
   const pct = Math.round((done / c.lessons.length) * 100)
   const minutes = c.lessons.reduce((n, l) => n + l.minutes, 0)
+  const access = canAccessCourse(world, c.id)
+  const mine = c.expertId === world.accountId
+  const buy = () =>
+    withAuth(() => {
+      if (c.stripeLink) {
+        try {
+          sessionStorage.setItem(PENDING, JSON.stringify({ courseId: c.id, at: Date.now() }))
+        } catch {}
+        window.location.href = c.stripeLink
+      } else if (confirm(`Get ${c.title} as a test purchase? No payment is taken — the creator hasn’t connected Stripe yet.`)) {
+        perform((s, t) => purchaseCourse(s, c.id, 'test', t), 'Test purchase complete — the course is unlocked.')
+      }
+    }, 'Join PLACES to get this course.')
   const members = count(c.baseMembers, Object.values(world.enrollments).filter((l) => l.some((x) => x.courseId === c.id)).length)
 
   return (
@@ -51,6 +85,7 @@ export function CourseDetail() {
           </p>
           <h1 className="mt-2 font-serif text-[clamp(2.2rem,5vw,3.4rem)] leading-[1.02]">{c.title}</h1>
           <p className="mt-1 text-lg text-navy-soft">{c.subtitle}</p>
+          <p className="mt-3 text-2xl font-semibold">{c.price ? formatPrice(c.price) : 'Free'}</p>
           <p className="mt-4 leading-relaxed text-navy-soft">{c.description}</p>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
             <span className="inline-flex items-center gap-1.5">
@@ -69,7 +104,15 @@ export function CourseDetail() {
             </span>
           </Link>
           <div className="mt-6 flex items-center gap-3">
-            {e ? (
+            {mine ? (
+              <ButtonLink href={`/teach/course/?id=${c.id}`} size="lg" variant="outline" className="flex-1 !text-base">
+                <Pencil className="h-4 w-4" /> Edit your course
+              </ButtonLink>
+            ) : !access ? (
+              <Button size="lg" className="flex-1 !text-base" onClick={buy}>
+                <CreditCard className="h-5 w-5" /> {c.stripeLink ? `Buy course · ${formatPrice(c.price!)}` : `Get course · ${formatPrice(c.price!)} (test)`}
+              </Button>
+            ) : e ? (
               <div className="flex-1">
                 <div className="h-2.5 overflow-hidden rounded-full bg-white">
                   <div className="h-full rounded-full bg-teal transition-all duration-700" style={{ width: `${pct}%` }} />
@@ -78,7 +121,7 @@ export function CourseDetail() {
               </div>
             ) : (
               <Button size="lg" className="flex-1 !text-base" onClick={() => withAuth(() => perform((s, t) => enroll(s, c.id, t), `You joined ${c.title}.`), 'Join PLACES to start learning.')}>
-                {c.kind === 'live' ? 'Reserve my spot' : 'Start learning — free'}
+                {c.kind === 'live' ? 'Reserve my spot' : c.price ? 'Start learning' : 'Start learning — free'}
               </Button>
             )}
             <SaveButton refItem={{ kind: 'course', refId: c.id }} label className="h-12 rounded-full border border-line bg-white px-5 text-sm font-medium" />
@@ -91,11 +134,17 @@ export function CourseDetail() {
         <ol className="mt-5 grid gap-3">
           {c.lessons.map((l, i) => {
             const complete = !!e?.completed.includes(l.id)
-            const expanded = open === l.id
+            const locked = !access && i > 0
+            const expanded = open === l.id && !locked
             return (
               <li key={l.id}>
                 <Card className="overflow-hidden">
                   <div className="flex items-center gap-4 p-4">
+                    {locked ? (
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ivory text-muted" aria-label="Locked">
+                        <Lock className="h-4 w-4" />
+                      </span>
+                    ) : (
                     <button
                       onClick={() => withAuth(() => perform((s, t) => toggleLesson(s, c.id, l.id, t)), 'Join PLACES to track your progress.')}
                       aria-pressed={complete}
@@ -104,9 +153,12 @@ export function CourseDetail() {
                     >
                       <Check className="h-4 w-4" strokeWidth={3} />
                     </button>
-                    <button onClick={() => setOpen(expanded ? null : l.id)} aria-expanded={expanded} className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left">
+                    )}
+                    <button onClick={() => (locked ? buy() : setOpen(expanded ? null : l.id))} aria-expanded={expanded} className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left">
                       <span>
-                        <span className="text-xs text-muted">Lesson {i + 1} · {l.minutes} min</span>
+                        <span className="text-xs text-muted">
+                          Lesson {i + 1} · {l.minutes} min{!access && i === 0 ? ' · Free preview' : ''}
+                        </span>
                         <span className={cn('block font-semibold', complete && 'text-muted line-through decoration-teal/40')}>{l.title}</span>
                       </span>
                       <ChevronDown className={cn('h-5 w-5 shrink-0 text-muted transition-transform', expanded && 'rotate-180')} />

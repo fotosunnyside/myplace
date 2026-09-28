@@ -33,6 +33,16 @@ export interface Person {
 export interface Account extends Person {
   email: string
   openTo: ('jobs' | 'freelance' | 'collaboration')[]
+  /** Creator plan: lets a person publish courses in MindPlace. */
+  creatorPlan?: CreatorPlan
+}
+
+export interface CreatorPlan {
+  status: 'active' | 'canceled'
+  via: 'stripe' | 'test'
+  since: number
+  /** End of the current paid period. */
+  renewsAt: number
 }
 
 /* ------------------------------------------------------------------ */
@@ -92,6 +102,20 @@ export interface Course {
   baseMembers: number
   /** For live sessions. */
   startsAt?: number
+  /** In cents. 0 or missing = free. */
+  price?: number
+  /** Creator's own Stripe Payment Link — learners pay the creator directly. */
+  stripeLink?: string
+  createdAt?: number
+}
+
+export interface CoursePurchase {
+  id: ID
+  courseId: ID
+  buyerId: ID
+  total: number
+  via: 'stripe' | 'test'
+  createdAt: number
 }
 
 export interface Enrollment {
@@ -248,6 +272,7 @@ export interface WorldState {
   shops: Shop[]
   products: Product[]
   orders: Order[]
+  coursePurchases: CoursePurchase[]
   opportunities: Opportunity[]
   applications: Application[]
   threads: Thread[]

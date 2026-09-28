@@ -154,3 +154,58 @@ describe('store', () => {
     expect(r.people.map((p) => p.username)).toContain('mayamakes')
   })
 })
+
+describe('creators', () => {
+  const course = (over: Partial<A.CourseInput> = {}): A.CourseInput => ({
+    title: 'Watercolor Basics',
+    subtitle: '',
+    description: 'Paint your first landscape.',
+    image: '/x.webp',
+    topic: 'Creativity',
+    kind: 'course',
+    price: 0,
+    lessons: [{ title: 'Materials', minutes: 5, body: 'Brushes, paper, paint.' }],
+    ...over,
+  })
+
+  it('requires an active creator plan to publish', () => {
+    let s = joined()
+    expect(() => A.createCourse(s, course(), NOW)).toThrow(/creator plan/)
+    s = A.subscribeCreator(s, 'test', NOW)
+    expect(A.hasCreatorPlan(s)).toBe(true)
+    const r = A.createCourse(s, course(), NOW)
+    expect(r.state.courses[0]).toMatchObject({ title: 'Watercolor Basics', expertId: me(s), subtitle: 'Free course' })
+    expect(A.isListed(r.state, r.id)).toBe(true)
+    const paused = A.cancelCreator(r.state)
+    expect(A.isListed(paused, r.id)).toBe(false)
+  })
+
+  it('validates lessons, prices and Stripe links', () => {
+    const s = A.subscribeCreator(joined(), 'test', NOW)
+    expect(() => A.createCourse(s, course({ lessons: [{ title: 'Only a title', minutes: 5, body: '' }] }), NOW)).toThrow(/title and some content/)
+    expect(() => A.createCourse(s, course({ price: 50 }), NOW)).toThrow(/at least \$1/)
+    expect(() => A.createCourse(s, course({ price: 2900, stripeLink: 'https://example.com' }), NOW)).toThrow(/Stripe/)
+  })
+
+  it('locks paid courses until purchased, then enrolls the buyer', () => {
+    let s = A.subscribeCreator(joined(), 'test', NOW)
+    const r = A.createCourse(s, course({ price: 2900 }), NOW)
+    s = A.signOut(r.state)
+    s = A.signUp(s, { name: 'Learner', username: 'learner', email: 'l@example.com' }, NOW)
+    expect(A.canAccessCourse(s, r.id)).toBe(false)
+    expect(() => A.enroll(s, r.id, NOW)).toThrow(/Buy/)
+    s = A.purchaseCourse(s, r.id, 'test', NOW)
+    expect(A.canAccessCourse(s, r.id)).toBe(true)
+    expect(s.coursePurchases[0]).toMatchObject({ courseId: r.id, total: 2900, via: 'test' })
+    expect(s.enrollments[me(s)][0].courseId).toBe(r.id)
+  })
+
+  it('only lets authors edit or delete their courses', () => {
+    let s = A.subscribeCreator(joined(), 'test', NOW)
+    const r = A.createCourse(s, course(), NOW)
+    s = A.updateCourse(r.state, r.id, course({ title: 'Watercolor for Everyone' }))
+    expect(s.courses[0].title).toBe('Watercolor for Everyone')
+    expect(() => A.updateCourse(s, 'crs_digital', course())).toThrow(/own courses/)
+    expect(A.deleteCourse(s, r.id).courses.some((c) => c.id === r.id)).toBe(false)
+  })
+})

@@ -6,6 +6,7 @@ import { DiscussionRow, LearningCard } from '@/components/cards'
 import { SearchField } from '@/components/search/SearchField'
 import { FilterPills } from '@/components/ui/FilterPills'
 import { Avatar, Button, Card, SectionHeader } from '@/components/ui/primitives'
+import { isListed } from '@/lib/store/actions'
 import { useWorld, withAuth } from '@/lib/store/hooks'
 import { enrollmentsOf, person } from '@/lib/store/selectors'
 import { openCreate } from '@/lib/ui'
@@ -16,7 +17,7 @@ export function MindPlaceApp({ compact = false }: { compact?: boolean }) {
   const world = useWorld()
   const [filter, setFilter] = useState('All')
 
-  const courses = world.courses.filter(
+  const courses = world.courses.filter((c) => isListed(world, c.id)).filter(
     (c) => filter === 'All' || (filter === 'Courses' && c.kind === 'course') || (filter === 'Guides' && c.kind === 'guide') || (filter === 'Live' && c.kind === 'live'),
   )
   const showLearning = ['All', 'Courses', 'Guides', 'Live'].includes(filter)
@@ -63,6 +64,16 @@ export function MindPlaceApp({ compact = false }: { compact?: boolean }) {
             ))}
           </div>
         </section>
+      )}
+
+      {!compact && (
+        <Link href="/teach" className="group flex flex-wrap items-center justify-between gap-4 rounded-card bg-gradient-to-r from-teal-wash via-cream to-[#fdf2d6] p-5 shadow-soft transition hover:shadow-lift">
+          <span>
+            <span className="block font-serif text-2xl">Share what you know</span>
+            <span className="text-sm text-navy-soft">Host your own courses — free or paid — for $2/month. You keep every sale.</span>
+          </span>
+          <span className="inline-flex h-10 items-center rounded-full bg-teal px-5 text-sm font-medium text-white transition group-hover:bg-teal-deep">Teach on PLACES →</span>
+        </Link>
       )}
 
       {filter === 'Experts' && (

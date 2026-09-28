@@ -77,6 +77,9 @@ export function LearningCard({ course }: { course: Course }) {
       <Card lift className="group flex h-full min-w-0 gap-1.5 p-1.5 @3xl:flex-col @3xl:gap-0 @3xl:overflow-hidden @3xl:p-0">
         <div className="relative h-11 w-7 shrink-0 overflow-hidden rounded-md @3xl:h-40 @3xl:w-full @3xl:rounded-none">
           <Picture src={course.image} alt="" fill sizes="(min-width: 1024px) 300px, 80px" className="object-cover transition duration-700 ease-gentle group-hover:scale-105" />
+          <span className="absolute right-2 top-2 hidden rounded-full bg-white/90 px-2 py-0.5 text-[0.68rem] font-semibold text-navy shadow-soft @3xl:inline">
+            {course.price ? formatPrice(course.price) : 'Free'}
+          </span>
           {course.kind === 'live' && (
             <span className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-coral px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-white @3xl:inline-flex">
               <Radio className="h-3 w-3" /> Live

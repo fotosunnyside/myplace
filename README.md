@@ -51,6 +51,22 @@ plus a Stripe webhook) replaces that layer without touching the UI.
 Buyers pay you directly on Stripe's checkout. When they return, PLACES records the order in their Activity. Stripe's dashboard is the
 source of truth for payments: without a server, PLACES can't independently verify a payment.
 
+### Creator plan: host courses for $2/month
+
+Anyone with an active creator plan can publish courses in MindPlace (`/teach`), free or paid. Paid courses show the first lesson as a
+free preview. Learners buy through the **creator's own Stripe Payment Link**, so creators keep 100% of course sales.
+
+To charge for the plan:
+1. In Stripe, create a product "PLACES Creator plan" with a **recurring $2/month** price, then create a **Payment Link** for it.
+2. In the Payment Link's **After payment** settings, redirect to `https://fotosunnyside.github.io/myplace/teach/?subscribed=1`.
+3. Optional: in Stripe → **Settings → Billing → Customer portal**, turn on the portal and copy its login link, so creators can manage
+   or cancel their plan.
+4. In GitHub → repository **Settings → Secrets and variables → Actions → Variables**, add `CREATOR_PLAN_LINK` (the Payment Link) and,
+   optionally, `STRIPE_PORTAL_LINK`. The next deploy picks them up.
+
+Until `CREATOR_PLAN_LINK` is set, plans start in clearly labelled test mode. Without a backend, PLACES trusts the return from Stripe
+and can't see renewals or cancellations. Connecting the cloud backend adds a Stripe webhook that keeps plan status in sync.
+
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · idb-keyval · Vitest · Playwright.

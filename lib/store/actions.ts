@@ -128,6 +128,8 @@ export function deleteAccount(s: WorldState): WorldState {
     shops: s.shops.filter((x) => x.ownerId !== me),
     products: s.products.filter((p) => !myShops.has(p.shopId)),
     orders: s.orders.filter((o) => o.buyerId !== me),
+    courses: s.courses.filter((c) => c.expertId !== me),
+    coursePurchases: (s.coursePurchases ?? []).filter((p) => p.buyerId !== me),
     opportunities: s.opportunities.filter((o) => o.postedById !== me),
     applications: s.applications.filter((a) => a.applicantId !== me),
     threads: s.threads.filter((t) => !t.participantIds.includes(me)),
@@ -272,6 +274,8 @@ export function enroll(s: WorldState, courseId: ID, now: number): WorldState {
   const me = need(s)
   const list = s.enrollments[me] ?? []
   if (list.some((e) => e.courseId === courseId)) return s
+  const course = s.courses.find((c) => c.id === courseId)
+  if (course && !canAccessCourse(s, courseId, me)) throw new ActionError(`Buy ${course.title} to start learning.`)
   return { ...s, enrollments: { ...s.enrollments, [me]: [...list, { courseId, startedAt: now, completed: [] }] } }
 }
 
@@ -461,3 +465,144 @@ export function markAllNotificationsRead(s: WorldState): WorldState {
 
 export const districtOf = (kind: Ref['kind']): DistrictId =>
   kind === 'course' || kind === 'discussion' ? 'mindplace' : kind === 'product' || kind === 'shop' ? 'marketplace' : kind === 'opportunity' ? 'workplace' : 'yourplace'
+
+/* ------------------------------------------------------------------ */
+/* Creators — publish courses in MindPlace                              */
+/* ------------------------------------------------------------------ */
+
+const DAY = 86_400_000
+
+export const hasCreatorPlan = (s: WorldState, id: ID | null = s.accountId) =>
+  s.accounts.find((a) => a.id === id)?.creatorPlan?.status === 'active'
+
+/** Free courses, the author, and buyers can open every lesson. */
+export function canAccessCourse(s: WorldState, courseId: ID, userId: ID | null = s.accountId) {
+  const c = s.courses.find((x) => x.id === courseId)
+  if (!c) return false
+  if (!c.price) return true
+  if (!userId) return false
+  return c.expertId === userId || (s.coursePurchases ?? []).some((p) => p.courseId === courseId && p.buyerId === userId)
+}
+
+export function subscribeCreator(s: WorldState, via: 'stripe' | 'test', now: number): WorldState {
+  const me = need(s)
+  const next = {
+    ...s,
+    accounts: s.accounts.map((a) => (a.id === me ? { ...a, creatorPlan: { status: 'active' as const, via, since: a.creatorPlan?.since ?? now, renewsAt: now + 30 * DAY } } : a)),
+  }
+  return notify(next, me, { text: 'Your creator plan is active. Publish your first course!', href: '/teach', district: 'mindplace' }, now)
+}
+
+export function cancelCreator(s: WorldState): WorldState {
+  const me = need(s)
+  return { ...s, accounts: s.accounts.map((a) => (a.id === me && a.creatorPlan ? { ...a, creatorPlan: { ...a.creatorPlan, status: 'canceled' as const } } : a)) }
+}
+
+export interface LessonInput {
+  id?: ID
+  title: string
+  minutes: number
+  body: string
+}
+
+export interface CourseInput {
+  title: string
+  subtitle: string
+  description: string
+  image: string
+  topic: string
+  kind: 'course' | 'guide'
+  /** Cents; 0 = free. */
+  price: number
+  stripeLink?: string
+  lessons: LessonInput[]
+}
+
+function validateCourse(input: CourseInput) {
+  if (input.title.trim().length < 3) throw new ActionError('Give your course a title.')
+  if (!input.image) throw new ActionError('Add a cover image.')
+  const lessons = input.lessons.filter((l) => l.title.trim() || l.body.trim())
+  if (!lessons.length) throw new ActionError('Add at least one lesson.')
+  if (lessons.some((l) => !l.title.trim() || !l.body.trim())) throw new ActionError('Every lesson needs a title and some content.')
+  if (input.price && input.price < 100) throw new ActionError('Paid courses cost at least $1.')
+  const link = input.stripeLink?.trim()
+  if (link && !STRIPE_LINK_RE.test(link)) throw new ActionError('Paste a Stripe Payment Link (it starts with https://buy.stripe.com/).')
+  return lessons
+}
+
+const toLessons = (lessons: LessonInput[]) =>
+  lessons.map((l) => ({ id: l.id ?? uid('lsn'), title: l.title.trim(), minutes: Math.max(1, Math.round(l.minutes || 5)), body: l.body.trim() }))
+
+export function createCourse(s: WorldState, input: CourseInput, now: number): { state: WorldState; id: ID } {
+  const me = need(s)
+  if (!hasCreatorPlan(s, me)) throw new ActionError('Start your creator plan to publish courses.')
+  const lessons = validateCourse(input)
+  const id = uid('crs')
+  const course = {
+    id,
+    title: input.title.trim(),
+    subtitle: input.subtitle.trim() || (input.price ? 'Premium course' : 'Free course'),
+    description: input.description.trim(),
+    image: input.image,
+    kind: input.kind,
+    topic: input.topic,
+    expertId: me,
+    lessons: toLessons(lessons),
+    baseMembers: 0,
+    price: input.price || undefined,
+    stripeLink: input.stripeLink?.trim() || undefined,
+    createdAt: now,
+  }
+  return { state: { ...s, courses: [course, ...s.courses] }, id }
+}
+
+export function updateCourse(s: WorldState, courseId: ID, input: CourseInput): WorldState {
+  const me = need(s)
+  const c = s.courses.find((x) => x.id === courseId)
+  if (!c || c.expertId !== me) throw new ActionError('You can only edit your own courses.')
+  const lessons = validateCourse(input)
+  return {
+    ...s,
+    courses: s.courses.map((x) =>
+      x.id === courseId
+        ? {
+            ...x,
+            title: input.title.trim(),
+            subtitle: input.subtitle.trim() || x.subtitle,
+            description: input.description.trim(),
+            image: input.image,
+            kind: input.kind,
+            topic: input.topic,
+            lessons: toLessons(lessons),
+            price: input.price || undefined,
+            stripeLink: input.stripeLink?.trim() || undefined,
+          }
+        : x,
+    ),
+  }
+}
+
+export function deleteCourse(s: WorldState, courseId: ID): WorldState {
+  const me = need(s)
+  return { ...s, courses: s.courses.filter((c) => !(c.id === courseId && c.expertId === me)) }
+}
+
+/** Records a purchase (after the creator's Stripe checkout, or a test purchase) and enrolls the buyer. */
+export function purchaseCourse(s: WorldState, courseId: ID, via: 'stripe' | 'test', now: number): WorldState {
+  const me = need(s)
+  const c = s.courses.find((x) => x.id === courseId)
+  if (!c) throw new ActionError('That course is no longer available.')
+  if (canAccessCourse(s, courseId, me)) return enroll(s, courseId, now)
+  let next: WorldState = { ...s, coursePurchases: [{ id: uid('cpu'), courseId, buyerId: me, total: c.price ?? 0, via, createdAt: now }, ...(s.coursePurchases ?? [])] }
+  next = enroll(next, courseId, now)
+  next = notify(next, me, { text: `You now have ${c.title}. Enjoy!`, href: `/mindplace/course/?id=${c.id}`, district: 'mindplace' }, now)
+  return notify(next, c.expertId, { text: `Someone bought your course ${c.title}!`, href: '/teach', district: 'mindplace' }, now)
+}
+
+/** Courses shown in MindPlace: seed courses plus courses from creators with an active plan. */
+export function isListed(s: WorldState, courseId: ID) {
+  const c = s.courses.find((x) => x.id === courseId)
+  if (!c) return false
+  const isAccount = s.accounts.some((a) => a.id === c.expertId)
+  return !isAccount || hasCreatorPlan(s, c.expertId)
+}

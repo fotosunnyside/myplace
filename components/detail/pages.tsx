@@ -280,6 +280,31 @@ export function ActivityPage() {
           <>
             <h2 className="mt-2 font-semibold">Sales{myShop ? ` · ${myShop.name}` : ''}</h2>
             {sales.length ? sales.map((o) => productRow(o.id, o.productId, o.total, o.via, o.createdAt, person(world, o.buyerId).name)) : <p className="text-sm text-muted">{myShop ? 'No sales yet.' : 'You don’t have a shop yet.'}</p>}
+            <h2 className="mt-4 font-semibold">Course sales</h2>
+            {(() => {
+              const mineCourses = world.courses.filter((c) => c.expertId === acc.id)
+              const cs = (world.coursePurchases ?? []).filter((p) => mineCourses.some((c) => c.id === p.courseId))
+              return cs.length ? (
+                cs.map((p) => (
+                  <Card key={p.id} className="flex items-center justify-between gap-4 p-4">
+                    <div className="min-w-0">
+                      <Link href={`/mindplace/course/?id=${p.courseId}`} className="block truncate font-semibold hover:underline">
+                        {mineCourses.find((c) => c.id === p.courseId)?.title}
+                      </Link>
+                      <p className="text-sm text-muted">
+                        {person(world, p.buyerId).name} · <TimeAgo ts={p.createdAt} />
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatPrice(p.total)}</p>
+                      <Tag tone={p.via === 'stripe' ? 'teal' : 'neutral'}>{p.via === 'stripe' ? 'Paid via Stripe' : 'Test purchase'}</Tag>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-sm text-muted">{mineCourses.length ? 'No course sales yet.' : 'You haven’t published a course yet.'}</p>
+              )
+            })()}
             <h2 className="mt-4 font-semibold">Your opportunities</h2>
             {myOpps.length ? (
               myOpps.map((o) => (

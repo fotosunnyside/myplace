@@ -139,8 +139,8 @@ export const DISTRICTS: DistrictConfig[] = [
     icon: 'briefcase',
     art: {
       banner: '/districts/workplace-banner.webp',
-      bannerAspect: 1480 / 452,
-      bannerTitle: { left: 27.5, top: 32, width: 46, height: 64, align: 'center' },
+      bannerAspect: 2000 / 667,
+      bannerTitle: { left: 28, top: 10, width: 44, height: 46, align: 'center' },
       card: '/districts/workplace-card.webp',
       layer: layer('workplace', { x: 844, y: 134, w: 442, h: 402 }),
     },

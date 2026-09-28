@@ -18,6 +18,13 @@ export default function TermsPage() {
         Sellers are responsible for their listings, pricing, taxes, delivery and refunds. Payments are made directly to sellers through their own Stripe
         Payment Links; PLACES is not a party to the sale. Orders marked “Test order” involve no payment.
       </p>
+      <h2>Teaching in MindPlace</h2>
+      <p>
+        The creator plan is a monthly subscription that lets you publish courses. You can cancel anytime; while your plan is inactive your courses are
+        hidden from MindPlace, but people who bought them keep access. Creators are responsible for their course content and for delivering what they
+        advertise. Paid courses are sold directly by creators through their own Stripe Payment Links; PLACES takes no commission and is not a party to
+        the sale.
+      </p>
       <h2>Opportunities in WorkPlace</h2>
       <p>Posters are responsible for the accuracy and lawfulness of their opportunities. Never pay to apply for a job; report anything suspicious.</p>
       <h2>Your content</h2>

@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { GraduationCap } from 'lucide-react'
 import { useState } from 'react'
 import { DistrictIcon } from '@/components/districts/DistrictIcon'
 import { Dialog } from '@/components/ui/Dialog'
@@ -64,6 +66,17 @@ function Menu() {
           </button>
         </li>
       ))}
+      <li>
+        <Link href="/teach" onClick={closeCreate} className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-white/80 p-3 transition hover:border-teal/30 hover:bg-white">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#fdf2d6] text-[#a8791a]">
+            <GraduationCap className="h-5 w-5" />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-sm font-semibold">Publish a course</span>
+            <span className="text-xs text-muted">in MindPlace · creator plan</span>
+          </span>
+        </Link>
+      </li>
     </ul>
   )
 }

@@ -1,7 +1,7 @@
 import type { Course, Discussion, Opportunity, Person, Post, Product, Shop, WorldState } from '@/lib/types'
 
 /** Bump when seed content changes shape; user-created content is preserved across bumps. */
-export const SEED_VERSION = 3
+export const SEED_VERSION = 4
 
 const H = 3_600_000
 const D = 24 * H
@@ -82,7 +82,7 @@ const courses = (now: number): Course[] => [
     ]),
   },
   {
-    id: 'crs_shop', title: 'Start a Small Shop', subtitle: 'From idea to first sale', kind: 'course', topic: 'Business', expertId: 'p_maya', image: '/media/learn-shop.webp', baseMembers: 27_000,
+    id: 'crs_shop', title: 'Start a Small Shop', subtitle: 'From idea to first sale', kind: 'course', topic: 'Business', expertId: 'p_maya', image: '/media/learn-shop.webp', baseMembers: 27_000, price: 2900,
     description: 'Open your MarketPlace shop: products, photos, pricing and getting paid with Stripe.',
     lessons: lessons('shp', [
       ['Choose three products', 8, 'Start small. Three great products tell a clearer story than thirty.'],
@@ -141,6 +141,7 @@ export function seedWorld(now: number): WorldState {
     shops: shops(now),
     products: products(now),
     orders: [],
+    coursePurchases: [],
     opportunities: opportunities(now),
     applications: [],
     threads: [],
