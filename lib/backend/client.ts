@@ -8,7 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * When they're unset, features that need the cloud run in a clearly labelled on-device preview.
  */
 export const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/$/, '')
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+// Supabase calls this the "anon" key on older projects and the "publishable" key (sb_publishable_…) on newer ones.
+export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''
 
 export const backendConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 

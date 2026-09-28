@@ -47,8 +47,9 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          # Public values (safe to commit). Repository variables override them.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://zeveszwhbsguwnvuzfwd.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || 'sb_publishable_7LMrPUqFLySJdJRZ_0kKYA_Kk_0r5Fc' }}
           NEXT_PUBLIC_MEDIA_PROVIDER: ${{ vars.MEDIA_PROVIDER }}
       - uses: actions/upload-artifact@v4
         if: failure()
