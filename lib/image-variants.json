@@ -3,7 +3,7 @@
   480,
   828,
   1200,
-  1480
+  2000
  ],
  "/districts/marketplace-card.webp": [
   480,
@@ -14,7 +14,7 @@
   480,
   828,
   1200,
-  1492
+  2000
  ],
  "/districts/mindplace-card.webp": [
   480,
@@ -36,7 +36,7 @@
   480,
   828,
   1200,
-  1496
+  2000
  ],
  "/districts/yourplace-card.webp": [
   480,
@@ -59,7 +59,7 @@
  ],
  "/media/learn-writing.webp": [
   480,
-  567
+  760
  ],
  "/media/post-landscape.webp": [
   480,
@@ -82,7 +82,7 @@
  "/world/marketplace.webp": [
   480,
   828,
-  1294
+  1364
  ],
  "/world/mindplace.webp": [
   480,
@@ -92,11 +92,12 @@
  "/world/mobile-world.webp": [
   480,
   828,
-  976
+  1200,
+  1464
  ],
  "/world/workplace.webp": [
   480,
-  864
+  884
  ],
  "/world/world-base.webp": [
   480,
@@ -107,6 +108,6 @@
  ],
  "/world/yourplace.webp": [
   480,
-  894
+  864
  ]
 }

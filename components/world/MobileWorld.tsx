@@ -14,7 +14,7 @@ const pad = (r: Rect, p = 4): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + p * 2,
 const center = (r: Rect) =>
   `${((r.x + r.w / 2) / MOBILE_WORLD.width) * 100}% ${((r.y + r.h / 2) / MOBILE_WORLD.height) * 100}%`
 
-const GLINTS: Point[] = [[20, 140], [30, 250], [212, 238], [190, 300], [18, 330], [226, 150]]
+const GLINTS: Point[] = [[20, 150], [215, 160], [30, 255], [210, 280], [40, 330], [110, 405]]
 
 /**
  * Vertical world for phones. The landscape is authored as a tall composition so

@@ -73,16 +73,16 @@ export const DISTRICTS: DistrictConfig[] = [
     icon: 'house',
     art: {
       banner: '/districts/yourplace-banner.webp',
-      bannerAspect: 1496 / 512,
-      bannerTitle: { left: 9, top: 12, width: 50, height: 60, align: 'left' },
+      bannerAspect: 2000 / 667,
+      bannerTitle: { left: 5, top: 14, width: 46, height: 56, align: 'left' },
       card: '/districts/yourplace-card.webp',
-      layer: layer('yourplace', { x: 39, y: 234, w: 447, h: 342 }),
+      layer: layer('yourplace', { x: 24, y: 189, w: 432, h: 347 }),
     },
     world: {
-      hotspot: [[55, 470], [60, 380], [110, 300], [175, 255], [300, 250], [390, 280], [450, 330], [470, 400], [430, 440], [380, 500], [300, 545], [240, 560], [130, 550]],
-      label: { x: 107, y: 378, w: 263, h: 62 },
+      hotspot: [[40, 420], [60, 330], [110, 260], [175, 210], [300, 205], [400, 240], [440, 300], [440, 380], [400, 440], [330, 500], [240, 520], [130, 500]],
+      label: { x: 120, y: 340, w: 260, h: 58 },
     },
-    mobile: { label: { x: 36, y: 160, w: 93, h: 30 }, band: { y: 120, h: 120 } },
+    mobile: { label: { x: 40, y: 128, w: 95, h: 28 }, band: { y: 95, h: 70 } },
     teaser: { verb: 'Continue in', line: '2 new messages · 3 recent posts' },
   },
   {
@@ -95,16 +95,16 @@ export const DISTRICTS: DistrictConfig[] = [
     icon: 'graduation-cap',
     art: {
       banner: '/districts/mindplace-banner.webp',
-      bannerAspect: 1492 / 448,
-      bannerTitle: { left: 29, top: 34, width: 48, height: 63, align: 'center' },
+      bannerAspect: 2000 / 667,
+      bannerTitle: { left: 28, top: 10, width: 44, height: 46, align: 'center' },
       card: '/districts/mindplace-card.webp',
-      layer: layer('mindplace', { x: 394, y: 12, w: 527, h: 404 }),
+      layer: layer('mindplace', { x: 399, y: 0, w: 527, h: 386 }),
     },
     world: {
-      hotspot: [[430, 300], [410, 230], [455, 150], [530, 70], [600, 28], [680, 40], [740, 80], [830, 120], [900, 170], [905, 260], [850, 300], [760, 330], [700, 400], [640, 395], [560, 340], [480, 330]],
-      label: { x: 487, y: 186, w: 256, h: 59 },
+      hotspot: [[430, 300], [415, 210], [470, 130], [560, 60], [600, 15], [700, 15], [790, 60], [870, 110], [910, 180], [900, 250], [840, 300], [760, 320], [700, 370], [640, 360], [560, 330], [480, 320]],
+      label: { x: 520, y: 190, w: 260, h: 58 },
     },
-    mobile: { label: { x: 72, y: 50, w: 93, h: 29 }, band: { y: 0, h: 120 } },
+    mobile: { label: { x: 95, y: 62, w: 93, h: 28 }, band: { y: 0, h: 95 } },
     teaser: { verb: 'Discover in', line: 'Trending: Sustainable Living' },
   },
   {
@@ -117,16 +117,16 @@ export const DISTRICTS: DistrictConfig[] = [
     icon: 'store',
     art: {
       banner: '/districts/marketplace-banner.webp',
-      bannerAspect: 1480 / 440,
-      bannerTitle: { left: 28.5, top: 32, width: 51, height: 66, align: 'center' },
+      bannerAspect: 2000 / 667,
+      bannerTitle: { left: 28, top: 10, width: 44, height: 46, align: 'center' },
       card: '/districts/marketplace-card.webp',
-      layer: layer('marketplace', { x: 329, y: 394, w: 647, h: 370 }),
+      layer: layer('marketplace', { x: 344, y: 364, w: 682, h: 372 }),
     },
     world: {
-      hotspot: [[405, 470], [500, 425], [600, 410], [700, 420], [790, 440], [880, 480], [960, 560], [945, 650], [870, 730], [740, 764], [520, 764], [400, 720], [345, 650], [370, 560]],
-      label: { x: 510, y: 603, w: 297, h: 62 },
+      hotspot: [[400, 470], [470, 420], [580, 380], [700, 380], [800, 395], [880, 440], [950, 520], [1010, 610], [960, 680], [820, 720], [600, 720], [430, 690], [360, 610], [370, 530]],
+      label: { x: 515, y: 578, w: 290, h: 60 },
     },
-    mobile: { label: { x: 78, y: 298, w: 103, h: 30 }, band: { y: 240, h: 110 } },
+    mobile: { label: { x: 80, y: 232, w: 103, h: 28 }, band: { y: 165, h: 105 } },
     teaser: { verb: 'Explore in', line: 'New handmade shops' },
   },
   {
@@ -142,13 +142,13 @@ export const DISTRICTS: DistrictConfig[] = [
       bannerAspect: 1480 / 452,
       bannerTitle: { left: 27.5, top: 32, width: 46, height: 64, align: 'center' },
       card: '/districts/workplace-card.webp',
-      layer: layer('workplace', { x: 854, y: 154, w: 432, h: 442 }),
+      layer: layer('workplace', { x: 844, y: 134, w: 442, h: 402 }),
     },
     world: {
-      hotspot: [[900, 310], [935, 240], [960, 185], [1100, 170], [1230, 190], [1286, 250], [1286, 500], [1230, 570], [1100, 580], [990, 520], [930, 470], [870, 420]],
-      label: { x: 940, y: 402, w: 275, h: 60 },
+      hotspot: [[880, 300], [920, 230], [960, 175], [1100, 150], [1230, 180], [1286, 240], [1286, 470], [1200, 520], [1080, 520], [990, 470], [920, 430], [860, 380]],
+      label: { x: 940, y: 358, w: 270, h: 58 },
     },
-    mobile: { label: { x: 71, y: 377, w: 101, h: 30 }, band: { y: 350, h: 70 } },
+    mobile: { label: { x: 125, y: 338, w: 101, h: 28 }, band: { y: 270, h: 150 } },
     teaser: { verb: 'Opportunities in', line: '12 new remote jobs' },
   },
 ]
@@ -164,11 +164,11 @@ export const orderedDistricts = () => DISTRICT_ORDER.map(getDistrict)
 /* ------------------------------------------------------------------ */
 
 export const AMBIENT = {
-  balloon: { src: '/world/balloon.webp', rect: { x: 1034, y: 30, w: 102, h: 126 } satisfies Rect },
+  balloon: { src: '/world/balloon.webp', rect: { x: 1045, y: 8, w: 90, h: 114 } satisfies Rect },
   /** Points on the water that gently glint. */
   glints: [
-    [40, 330], [120, 612], [300, 560], [560, 405], [1000, 610], [1180, 668], [85, 468],
-    [905, 668], [640, 384], [1060, 640], [1240, 560], [180, 690],
+    [40, 330], [120, 600], [330, 610], [600, 360], [1000, 625], [1180, 660], [80, 470],
+    [900, 705], [640, 340], [1050, 560], [30, 160], [300, 720],
   ] as Point[],
 }
 
