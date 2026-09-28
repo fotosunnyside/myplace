@@ -473,6 +473,17 @@ create trigger virtual_spaces_release_closed
   for each row execute function public.release_closed_virtual_space();
 
 -- ---------------------------------------------------------------------------
+-- API access. Granted explicitly, so this works whether or not the project
+-- exposes new tables automatically. Row Level Security above decides which
+-- rows each role can actually see or change.
+-- ---------------------------------------------------------------------------
+revoke all on public.admin_users, public.virtual_spaces, public.virtual_space_participants from anon, authenticated;
+grant select on public.admin_users to authenticated;
+grant select on public.virtual_spaces to anon, authenticated;
+grant insert, update, delete on public.virtual_spaces to authenticated;
+grant select on public.virtual_space_participants to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- Realtime: open rooms and YourPlace cards update live when admins change
 -- a room or people come and go.
 -- ---------------------------------------------------------------------------
