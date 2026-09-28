@@ -143,6 +143,8 @@ test('a creator can subscribe, publish a paid course and a learner can unlock it
   // A second person buys it
   await page.goto('settings/')
   await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByText('Signed out.')).toBeVisible()
+  await settle(page)
   await page.goto(courseUrl)
   await page.getByRole('button', { name: /Get course · \$19/ }).click()
   await page.getByLabel('Your name').fill('Lee Learner')
@@ -200,6 +202,8 @@ test('an employer can post, hire into a workroom and pay an invoice', async ({ p
   // A freelancer applies
   await page.goto('settings/')
   await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByText('Signed out.')).toBeVisible()
+  await settle(page)
   await page.goto(oppUrl)
   await page.getByLabel('Why you’re a great fit').fill('I have designed logos for twenty small shops.')
   await page.getByRole('button', { name: 'Send application' }).click()
