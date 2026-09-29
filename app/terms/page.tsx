@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Terms' }
 export default function TermsPage() {
   return (
     <LegalPage title="Terms of use" updated="September 29, 2026">
-      <p>Welcome to PLACES. By using the site you agree to these terms.</p>
+      <p>Welcome to PLACES FOR US (placesforus.com, “PLACES”). By using the site you agree to these terms.</p>
       <h2>Be kind</h2>
       <ul>
         <li>No harassment, hate, threats, spam, scams or illegal content.</li>
@@ -35,7 +35,7 @@ export default function TermsPage() {
       <h2>Fees</h2>
       <p>
         Joining and using PLACES is free. PLACES charges no listing fees; local MarketPlace sales are free, and items bought through PLACES and shipped
-        carry a 1% platform fee (PLACES Pass does not change this). Current prices for plans (Create in MindPlace, Host a Space, PLACES Pass), job posts
+        carry a 1% platform fee (PLACES Pass does not change this). Current prices for plans (Create in MindPlace, Create Virtual Places, PLACES Pass), job posts
         and sponsored placements are shown on the Pricing page and where you buy them, and may change with notice. Payment processing fees are separate
         from PLACES fees.
       </p>

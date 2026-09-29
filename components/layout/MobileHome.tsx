@@ -6,7 +6,7 @@ import { Greeting } from './Greeting'
 export function MobileHome() {
   return (
     <div className="pb-[calc(86px+env(safe-area-inset-bottom))] pt-[calc(64px+env(safe-area-inset-top))] md:hidden">
-      <h1 className="sr-only">PLACES — The internet, made into a world.</h1>
+      <h1 className="sr-only">PLACES FOR US — The internet, made into a world.</h1>
       <MobileWorld />
       <section className="px-4 pt-7">
         <Greeting />

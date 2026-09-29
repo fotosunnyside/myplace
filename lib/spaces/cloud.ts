@@ -155,7 +155,7 @@ export const cloudBackend: SpacesBackend = {
         .select('*')
         .single(),
     ).catch((e: SpaceError) => {
-      if (e.code === 'forbidden') throw new SpaceError('forbidden', 'Host a Space or PLACES Pass lets you open your own rooms (up to 5).')
+      if (e.code === 'forbidden') throw new SpaceError('forbidden', 'Create Virtual Places or PLACES Pass lets you create your own Virtual Places (up to 5).')
       throw e
     })
     return spaceFromRow(row)

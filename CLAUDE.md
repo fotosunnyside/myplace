@@ -1,11 +1,13 @@
-# PLACES — notes for working on this repo
+# PLACES FOR US — notes for working on this repo
 
 ## Shipping (the owner wants changes live without manual steps)
 - Production is `main`. Every push to `main` runs `.github/workflows/pages.yml`: tests → `migrate` (applies
   `supabase/migrations` to the live Supabase project) → `deploy` (GitHub Pages). Nothing publishes if tests fail.
 - Work on the session's `claude/*` branch, run the checks below, then open a pull request into `main` and merge it
   once its checks pass. The owner has asked for finished changes to go live this way.
-- Live site: https://fotosunnyside.github.io/myplace/ · Supabase project ref `zeveszwhbsguwnvuzfwd`.
+- Live site: https://fotosunnyside.github.io/myplace/ (placesforus.com once `CUSTOM_DOMAIN` is set) · Supabase project ref `zeveszwhbsguwnvuzfwd`.
+- Naming (customer-facing): the brand is **PLACES FOR US**; the four Places are YourPlace, MindPlace, MarketPlace, WorkPlace;
+  rooms are **Virtual Places** (code and tables keep "spaces"). There is no MyPlace — Virtual Places live in YourPlace.
 
 ## Database changes
 - Never ask the owner to run SQL by hand: add a new file `supabase/migrations/<YYYYMMDDHHMMSS>_<name>.sql`.

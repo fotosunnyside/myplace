@@ -20,9 +20,9 @@ const SINGLE: Record<PlanContext, { title: string; lines: string[]; cta: string 
     cta: `Publish for ${money(PLANS.create.price)}/month`,
   },
   space: {
-    title: `Make your own rooms — ${money(PLANS.host.price)}/month`,
+    title: `Create Virtual Places — ${money(PLANS.host.price)}/month`,
     lines: ['Your own meetings, communities, classes, study groups, networking and gatherings — with a link anyone in PLACES can join.'],
-    cta: `Make your own rooms — ${money(PLANS.host.price)}/month`,
+    cta: `Create Virtual Places — ${money(PLANS.host.price)}/month`,
   },
   job: {
     title: `Post this opportunity — ${money(JOB_POST.price)}`,
@@ -34,11 +34,11 @@ const SINGLE: Record<PlanContext, { title: string; lines: string[]; cta: string 
 const PASS_COPY: Record<PlanContext, { title: string; body: string }> = {
   course: {
     title: PASS,
-    body: 'Publish courses and memberships with 0% PLACES platform fees, host virtual spaces, post WorkPlace opportunities, and unlock creator privileges across PLACES.',
+    body: 'Publish courses and memberships with 0% PLACES platform fees, create Virtual Places, post WorkPlace opportunities, and unlock creator privileges across PLACES.',
   },
   space: {
     title: `Included with ${PASS}`,
-    body: 'Make your own rooms — plus more across PLACES: publish courses and memberships with 0% PLACES platform fees, and post WorkPlace opportunities.',
+    body: 'Create your own Virtual Places — plus more across PLACES FOR US: publish courses and memberships with 0% PLACES platform fees, and post WorkPlace opportunities.',
   },
   job: { title: 'Included with PLACES Pass', body: `Post opportunities without the per-post charge — plus course publishing and hosting, for ${money(PLANS.pass.price)}/month.` },
 }
@@ -86,7 +86,7 @@ export function PlanOptions({
         <p className="font-serif text-2xl leading-tight">{pass.title}</p>
         <p className="mt-2 text-sm text-white/80">{pass.body}</p>
         <ul className="mt-3 grid gap-1 text-sm text-white/90">
-          {['0% PLACES course & membership fee', 'Host virtual spaces', 'Post WorkPlace opportunities'].map((l) => (
+          {['0% PLACES course & membership fee', 'Create Virtual Places', 'Post WorkPlace opportunities'].map((l) => (
             <li key={l} className="flex items-center gap-2">
               <Check className="h-4 w-4 text-aqua" /> {l}
             </li>

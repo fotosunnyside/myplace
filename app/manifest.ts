@@ -5,7 +5,7 @@ export const dynamic = 'force-static'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'PLACES — The Conscious Web',
+    name: 'PLACES FOR US — The Conscious Web',
     short_name: 'PLACES',
     description: 'The internet, made into a world.',
     start_url: withBase('/'),

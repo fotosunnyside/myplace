@@ -64,13 +64,13 @@ export function ProductDetail() {
       } else if (confirm(`Place a test order for ${p.title}? No payment is taken — the seller hasn’t connected Stripe for this product yet.`)) {
         perform((s, now) => placeOrder(s, p.id, 'test', now), 'Test order placed. You’ll find it in Activity.')
       }
-    }, 'Join PLACES to buy from independent shops.')
+    }, 'Join PLACES FOR US to buy from independent shops.')
 
   const message = () =>
     withAuth(() => {
       const r = perform((s, now) => openThread(s, shop.ownerId, { kind: 'product', refId: p.id, label: p.title }, now))
       if (r.ok) router.push(`/messages/?t=${r.id}`)
-    }, 'Join PLACES to message sellers.')
+    }, 'Join PLACES FOR US to message sellers.')
 
   const more = world.products.filter((x) => x.shopId === shop.id && x.id !== p.id).slice(0, 4)
 

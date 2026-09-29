@@ -11,7 +11,7 @@ import { useBackendSession } from '@/lib/backend/auth'
 import { backendConfigured } from '@/lib/backend/client'
 import { layoutBubbles } from '@/lib/spaces/layout'
 import { devicePrefs, roomSession, saveDevicePrefs, useRoomSession } from '@/lib/spaces/live'
-import { peopleHere, roomBehaviour } from '@/lib/spaces/rooms'
+import { peopleHere, roomBehaviour, roomHref, PLACES_HREF } from '@/lib/spaces/rooms'
 import type { RoomSessionState } from '@/lib/spaces/session'
 import { useOccupancy, useSpaces } from '@/lib/spaces/store'
 import type { VirtualSpace } from '@/lib/spaces/types'
@@ -25,7 +25,7 @@ import { deviceHint, RoomControls } from './RoomControls'
 import { RoomBackdrop } from './RoomBackdrop'
 import { RoomStatus } from './SpaceCard'
 
-/** /myplace/space/?room=<slug> — resolves the room from live configuration, then hands it to the shared room engine. */
+/** /yourplace/place/?room=<slug> — resolves the room from live configuration, then hands it to the shared room engine. */
 export function VirtualSpacePage() {
   const params = useSearchParams()
   const slug = params.get('room') ?? ''
@@ -39,7 +39,7 @@ export function VirtualSpacePage() {
       <RoomFrame>
         <div className="absolute inset-0 bg-[linear-gradient(180deg,#cfeef7_0%,#e9f6f3_55%,#fff9ef_100%)]" />
         <StateCard
-          title={loading ? 'Finding the room…' : spaces.status === 'error' ? 'We couldn’t reach PLACES' : 'We couldn’t find that room'}
+          title={loading ? 'Finding the room…' : spaces.status === 'error' ? 'We couldn’t reach PLACES FOR US' : 'We couldn’t find that room'}
           body={loading ? undefined : spaces.status === 'error' ? 'Check your connection and try again.' : 'It may have moved or been renamed.'}
           busy={loading}
           actions={!loading && <BackToMyPlace />}
@@ -112,13 +112,13 @@ export function VirtualSpaceRoom({ space, autoEnter }: { space: VirtualSpace; au
     if (mine && phase !== 'idle') return
     autoEntered.current = true
     enter(prefs)
-    router.replace(`/myplace/space/?room=${space.slug}`)
+    router.replace(roomHref(space.slug))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoEnter, prefs, cloudPending, signedIn, space.isActive])
 
   const leave = async () => {
     await roomSession.leave()
-    router.push('/myplace')
+    router.push(PLACES_HREF)
   }
 
   const count = mine && (phase === 'in-room' || phase === 'reconnecting') ? session.roster.length || 1 : occupancy?.[space.id]
@@ -168,13 +168,13 @@ function TopBar({ space, count, phase, quiet, joinedAt }: { space: VirtualSpace;
       <div className="flex items-start justify-between gap-3 px-3 pt-3 md:px-6 md:pt-5">
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <Link
-            href="/myplace"
+            href={PLACES_HREF}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/85 text-navy shadow-soft backdrop-blur-md transition hover:bg-white md:h-11 md:w-auto md:gap-1 md:px-4 md:pr-5 md:text-sm md:font-medium"
-            aria-label={inside ? 'Spaces (you’ll stay in the room)' : 'Back to Spaces'}
+            aria-label={inside ? 'Virtual Places (you’ll stay in the room)' : 'Back to Virtual Places'}
           >
             <span className="flex items-center gap-1">
               <ChevronLeft className="h-5 w-5" />
-              <span className="hidden md:inline">Spaces</span>
+              <span className="hidden md:inline">Virtual Places</span>
             </span>
           </Link>
           <div className="min-w-0 rounded-full bg-navy/35 py-1.5 pl-4 pr-3 shadow-soft ring-1 ring-white/15 backdrop-blur-md">
@@ -327,11 +327,11 @@ function Threshold({
     return (
       <StateCard
         title={`Enter ${space.name}`}
-        body={hasAccount ? 'Sign in with your PLACES password to enter live spaces.' : 'Live spaces are free for everyone with a PLACES account.'}
+        body={hasAccount ? 'Sign in with your PLACES FOR US password to enter this Virtual Place.' : 'Virtual Places are free for everyone with a PLACES FOR US account.'}
         actions={
           <>
             <Button onClick={() => openAuth({ mode: hasAccount ? 'signin' : 'join', reason: `Rooms are free for PLACES members.`, onDone: () => setTimeout(onEnter, 300) })}>
-              {hasAccount ? 'Sign in to enter' : 'Join PLACES'}
+              {hasAccount ? 'Sign in to enter' : 'Join PLACES FOR US'}
             </Button>
             <BackToMyPlace />
           </>
@@ -360,7 +360,7 @@ function Threshold({
         <Button size="lg" className="mt-6 w-full !text-base" onClick={onEnter} disabled={!prefs}>
           {behaviour.cta}
         </Button>
-        <Link href="/myplace" className="mt-4 inline-block text-sm font-medium text-teal-deep hover:underline">
+        <Link href={PLACES_HREF} className="mt-4 inline-block text-sm font-medium text-teal-deep hover:underline">
           Not now
         </Link>
       </motion.div>
@@ -467,8 +467,8 @@ function GuestDoor({ space, onEnter }: { space: VirtualSpace; onEnter: () => voi
 
 function BackToMyPlace() {
   return (
-    <Link href="/myplace" className="inline-flex h-10 items-center rounded-full border border-line bg-white/70 px-5 text-sm font-medium text-navy hover:bg-white">
-      Back to Spaces
+    <Link href={PLACES_HREF} className="inline-flex h-10 items-center rounded-full border border-line bg-white/70 px-5 text-sm font-medium text-navy hover:bg-white">
+      Back to Virtual Places
     </Link>
   )
 }
@@ -639,7 +639,7 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
           <p className="font-medium">You’re here as a guest.</p>
           <p className="mt-0.5 text-xs text-navy-soft">PLACES is free: a profile, courses, a marketplace and work — all in one place.</p>
           <button onClick={() => openAuth({ mode: 'join', reason: 'Make your own place in PLACES — it’s free.' })} className="mt-2 text-xs font-semibold text-teal-deep hover:underline">
-            Join PLACES free →
+            Join PLACES FOR US free →
           </button>
         </div>
       )}

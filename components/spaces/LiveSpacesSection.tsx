@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { featuredSpaces } from '@/lib/spaces/rooms'
+import { featuredSpaces, PLACES_HREF } from '@/lib/spaces/rooms'
 import { useOccupancy, useSpaces } from '@/lib/spaces/store'
 import { cn } from '@/lib/cn'
 import { SpaceCard } from './SpaceCard'
 
-/** The rooms PLACES keeps open for everyone, on the Spaces page. */
-export function LiveSpacesSection({ className, heading = 'Live Spaces', showAll = true }: { className?: string; heading?: string; showAll?: boolean }) {
+/** The official Virtual Places PLACES FOR US keeps open for everyone (YourPlace → Virtual Places). */
+export function LiveSpacesSection({ className, heading = 'Virtual Places', showAll = true }: { className?: string; heading?: string; showAll?: boolean }) {
   const spaces = useSpaces()
   const occupancy = useOccupancy()
   const list = spaces.status === 'ready' ? featuredSpaces(spaces.data) : 'data' in spaces && spaces.data ? featuredSpaces(spaces.data) : []
@@ -23,14 +23,14 @@ export function LiveSpacesSection({ className, heading = 'Live Spaces', showAll 
           </h2>
         </div>
         {showAll && (
-          <Link href="/myplace" className="group inline-flex shrink-0 items-center gap-1 text-sm font-medium text-teal-deep hover:text-teal">
-            All spaces <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          <Link href={PLACES_HREF} className="group inline-flex shrink-0 items-center gap-1 text-sm font-medium text-teal-deep hover:text-teal">
+            All Virtual Places <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         )}
       </div>
 
       {spaces.status === 'loading' ? (
-        <div className="grid gap-4 @2xl:grid-cols-2" aria-busy="true" aria-label="Loading live spaces">
+        <div className="grid gap-4 @2xl:grid-cols-2" aria-busy="true" aria-label="Loading Virtual Places">
           {[0, 1].map((i) => (
             <div key={i} className="min-h-[300px] animate-pulse rounded-panel bg-white/60 md:min-h-[340px]" />
           ))}
@@ -43,7 +43,7 @@ export function LiveSpacesSection({ className, heading = 'Live Spaces', showAll 
         </div>
       ) : (
         <p className="rounded-panel bg-white/70 px-6 py-10 text-center text-sm text-muted">
-          {spaces.status === 'error' ? 'Live spaces are out of reach right now. Try again in a moment.' : 'No live spaces are open right now.'}
+          {spaces.status === 'error' ? 'Virtual Places are out of reach right now. Try again in a moment.' : 'No Virtual Places are open right now.'}
         </p>
       )}
     </section>

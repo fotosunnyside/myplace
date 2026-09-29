@@ -91,12 +91,12 @@ export function signUp(s: WorldState, input: SignUpInput, now: number): WorldSta
         id: uid('msg'),
         senderId: 'p_guide',
         createdAt: now,
-        body: `Welcome to PLACES, ${account.name}! Your profile lives in YourPlace. Take a course in MindPlace, open a shop in MarketPlace, or find work in WorkPlace — it's all one identity.`,
+        body: `Welcome to PLACES FOR US, ${account.name}! Your profile lives in YourPlace. Take a course in MindPlace, open a shop in MarketPlace, or find work in WorkPlace — it's all one identity.`,
       },
     ],
   }
   next = { ...next, threads: [welcome, ...next.threads] }
-  return notify(next, account.id, { text: 'Welcome to PLACES — your home is ready in YourPlace.', href: '/yourplace', district: 'yourplace' }, now)
+  return notify(next, account.id, { text: 'Welcome to PLACES FOR US — your home is ready in YourPlace.', href: '/yourplace', district: 'yourplace' }, now)
 }
 
 export function signIn(s: WorldState, email: string): WorldState {
@@ -539,7 +539,7 @@ export function canAccessCourse(s: WorldState, courseId: ID, userId: ID | null =
 
 const PLAN_WELCOME: Record<PlanKind, { text: string; href: string; district: DistrictId }> = {
   pass: { text: 'Your PLACES Pass is active. Create, teach and host across PLACES.', href: '/pricing', district: 'mindplace' },
-  host: { text: 'You can host your own spaces now. Open your first room!', href: '/myplace', district: 'yourplace' },
+  host: { text: 'You can create your own Virtual Places now. Open your first one!', href: '/yourplace/?tab=places', district: 'yourplace' },
   create: { text: 'Create in MindPlace is active. Publish your course or membership!', href: '/teach', district: 'mindplace' },
 }
 

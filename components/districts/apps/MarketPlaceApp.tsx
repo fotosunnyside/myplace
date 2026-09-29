@@ -21,7 +21,7 @@ export function MarketPlaceApp({ compact = false }: { compact?: boolean }) {
       <div className="flex items-center gap-3">
         <FilterPills label="MarketPlace categories" options={CATEGORIES} value={cat} onChange={setCat} className="min-w-0 flex-1" />
         {!compact && (
-          <Button size="sm" onClick={() => withAuth(() => openCreate('product'), 'Join PLACES to open your shop.')} className="hidden shrink-0 @3xl:inline-flex @3xl:!h-9">
+          <Button size="sm" onClick={() => withAuth(() => openCreate('product'), 'Join PLACES FOR US to open your shop.')} className="hidden shrink-0 @3xl:inline-flex @3xl:!h-9">
             + Sell something
           </Button>
         )}
@@ -52,7 +52,7 @@ export function MarketPlaceApp({ compact = false }: { compact?: boolean }) {
       </section>
 
       {!compact && (
-        <Button onClick={() => withAuth(() => openCreate('product'), 'Join PLACES to open your shop.')} className="@3xl:hidden">
+        <Button onClick={() => withAuth(() => openCreate('product'), 'Join PLACES FOR US to open your shop.')} className="@3xl:hidden">
           + Sell something
         </Button>
       )}

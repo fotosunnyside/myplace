@@ -47,7 +47,7 @@ export function WorkroomsPage() {
           <h1 className="mt-4 font-serif text-3xl">Workrooms</h1>
           <p className="mt-2 text-muted">A calm shared space for your team or the people you hire: channels, chat and payments in one place.</p>
           <Button className="mt-6" onClick={() => openAuth({ mode: 'join' })}>
-            Join PLACES
+            Join PLACES FOR US
           </Button>
         </div>
       </Shell>

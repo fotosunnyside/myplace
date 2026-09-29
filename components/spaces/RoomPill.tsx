@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/primitives'
 import { roomSession, useRoomSession } from '@/lib/spaces/live'
 import { useMe } from '@/lib/store/hooks'
 import { cn } from '@/lib/cn'
+import { ROOM_PATH, roomHref } from '@/lib/spaces/rooms'
 
 /** While you look around PLACES, your room goes with you: who you are there, your mic and camera, and the way back. */
 export function RoomPill() {
@@ -18,7 +19,7 @@ export function RoomPill() {
   const video = useRef<HTMLVideoElement>(null)
   const stream = session.camera === 'on' ? (session.local?.videoStream ?? null) : null
   const inside = (session.phase === 'in-room' || session.phase === 'reconnecting') && !!session.space
-  const show = inside && pathname !== '/myplace/space'
+  const show = inside && pathname !== ROOM_PATH
 
   useEffect(() => {
     if (video.current) video.current.srcObject = stream
@@ -36,7 +37,7 @@ export function RoomPill() {
           aria-label={`You're in ${session.space.name}`}
         >
           <div className="flex items-center gap-2 rounded-full bg-navy/90 py-1.5 pl-1.5 pr-2 text-white shadow-lift ring-1 ring-white/10 backdrop-blur-xl">
-            <Link href={`/myplace/space/?room=${session.space.slug}`} className="flex items-center gap-2.5 rounded-full pr-2" aria-label={`Return to ${session.space.name}`}>
+            <Link href={roomHref(session.space.slug)} className="flex items-center gap-2.5 rounded-full pr-2" aria-label={`Return to ${session.space.name}`}>
               <span className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/80">
                 {stream ? <video ref={video} autoPlay playsInline muted className="h-full w-full -scale-x-100 object-cover" /> : <Avatar src={me?.avatar} alt="" name={me?.name ?? 'You'} size={40} />}
               </span>

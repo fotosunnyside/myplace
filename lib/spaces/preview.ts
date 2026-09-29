@@ -108,7 +108,7 @@ const need = (spaceId: string) => {
   if (!space) throw new SpaceError('missing', SPACE_MESSAGES.missing)
   return space
 }
-const noAdmin = () => Promise.reject(new SpaceError('forbidden', 'Managing rooms needs the PLACES backend. See README → Virtual Spaces.'))
+const noAdmin = () => Promise.reject(new SpaceError('forbidden', 'Managing rooms needs the PLACES backend. See README → Virtual Places.'))
 
 export const previewBackend: SpacesBackend = {
   mode: 'preview',
@@ -136,7 +136,7 @@ export const previewBackend: SpacesBackend = {
     const space = need(spaceId)
     const id = previewBackend.identity()
     if (!id) throw new SpaceError('signin', SPACE_MESSAGES.signin)
-    if (!getState().accountId && space.visibility !== 'public') throw new SpaceError('signin', 'Join PLACES to enter this room.')
+    if (!getState().accountId && space.visibility !== 'public') throw new SpaceError('signin', 'Join PLACES FOR US to enter this Virtual Place.')
     if (!space.isActive) throw new SpaceError('closed', SPACE_MESSAGES.closed)
     const board = read()
     const room = Object.fromEntries(Object.entries(board[spaceId] ?? {}).filter(([, p]) => fresh(p)))
@@ -172,9 +172,9 @@ export const previewBackend: SpacesBackend = {
   async createSpace(input) {
     const me = getState().accountId
     if (!me) throw new SpaceError('signin', SPACE_MESSAGES.signin)
-    if (!canHostSpaces(getState())) throw new SpaceError('forbidden', 'Host a Space or PLACES Pass lets you open your own rooms.')
+    if (!canHostSpaces(getState())) throw new SpaceError('forbidden', 'Create Virtual Places or PLACES Pass lets you create your own Virtual Places.')
     const mine = hosted().filter((s) => s.createdBy === me)
-    if (mine.length >= HOSTED_SPACES.roomsPerHost) throw new SpaceError('forbidden', `You can host up to ${HOSTED_SPACES.roomsPerHost} rooms for now.`)
+    if (mine.length >= HOSTED_SPACES.roomsPerHost) throw new SpaceError('forbidden', `You can create up to ${HOSTED_SPACES.roomsPerHost} Virtual Places for now.`)
     const problem = validateNewSpace(input, HOSTED_SPACES.maxParticipants)
     if (problem) throw new SpaceError('unknown', problem)
     const now = new Date().toISOString()

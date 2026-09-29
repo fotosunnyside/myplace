@@ -8,7 +8,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Select, TextArea, TextField } from '@/components/ui/fields'
 import { Button, Card } from '@/components/ui/primitives'
 import { HOSTED_SPACES } from '@/lib/config'
-import { hostedBy, roomHref, validateNewSpace } from '@/lib/spaces/rooms'
+import { hostedBy, roomHref, validateNewSpace, PLACES_HREF } from '@/lib/spaces/rooms'
 import { spacesBackend, spacesStore, useOccupancy, useSpaces } from '@/lib/spaces/store'
 import { HOSTED_ROOM_TYPES, SpaceError, type RoomType } from '@/lib/spaces/types'
 import { canHostSpaces } from '@/lib/store/actions'
@@ -33,8 +33,8 @@ export function HostSpaces() {
   // Arriving from "+ Create → Host a space".
   useEffect(() => {
     if (!wantsHost) return
-    router.replace('/myplace')
-    withAuth(() => setOpen(true), 'Join PLACES to host a space.')
+    router.replace(PLACES_HREF)
+    withAuth(() => setOpen(true), 'Join PLACES FOR US to create a Virtual Place.')
   }, [wantsHost, router])
 
   return (
@@ -42,12 +42,12 @@ export function HostSpaces() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="host" className="font-serif text-[1.9rem] leading-tight">
-            {mine.length ? 'Your spaces' : 'Make your own room'}
+            {mine.length ? 'Your Virtual Places' : 'Create a Virtual Place'}
           </h2>
           <p className="text-navy-soft">Meetings, classes, study groups, masterminds and gatherings — with a link people can join.</p>
         </div>
-        <Button onClick={() => withAuth(() => setOpen(true), 'Join PLACES to host a space.')}>
-          <Plus className="h-4 w-4" /> Make your own room
+        <Button onClick={() => withAuth(() => setOpen(true), 'Join PLACES FOR US to create a Virtual Place.')}>
+          <Plus className="h-4 w-4" /> Create a Virtual Place
         </Button>
       </div>
 
@@ -79,7 +79,7 @@ export function HostSpaces() {
 
       {others.length > 0 && (
         <>
-          <h3 className="mb-3 mt-8 font-serif text-2xl">Open rooms from members</h3>
+          <h3 className="mb-3 mt-8 font-serif text-2xl">Virtual Places from members</h3>
           <div className="grid gap-4 md:grid-cols-2">
             {others.map((s) => (
               <SpaceCard key={s.id} space={s} count={occupancy ? (occupancy[s.id] ?? 0) : null} size="md" />
@@ -91,8 +91,8 @@ export function HostSpaces() {
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title={canHost ? 'Make your own room' : 'Make your own rooms'}
-        description={canHost ? `Rooms hold up to ${HOSTED_SPACES.maxParticipants} people for now. You can host up to ${HOSTED_SPACES.roomsPerHost}.` : 'Official PLACES rooms are always free to join. Hosting your own takes a plan.'}
+        title={canHost ? 'Create a Virtual Place' : 'Create your own Virtual Places'}
+        description={canHost ? `Each Virtual Place holds up to ${HOSTED_SPACES.maxParticipants} people for now. You can create up to ${HOSTED_SPACES.roomsPerHost}.` : 'Official Virtual Places are always free to join. Creating your own takes a plan.'}
         className={canHost ? undefined : 'md:!max-w-3xl'}
       >
         {canHost ? <NewSpaceForm onDone={(slug) => (setOpen(false), router.push(roomHref(slug)))} /> : <PlanOptions context="space" />}
@@ -123,7 +123,7 @@ function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
       toast(`${space.name} is open.`)
       onDone(space.slug)
     } catch (err) {
-      toast(err instanceof SpaceError ? err.message : 'We couldn’t open your room. Please try again.', 'error')
+      toast(err instanceof SpaceError ? err.message : 'We couldn’t create your Virtual Place. Please try again.', 'error')
     } finally {
       setBusy(false)
     }
@@ -131,7 +131,7 @@ function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
 
   return (
     <form onSubmit={submit} className="grid gap-4">
-      <TextField label="Room name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} maxLength={80} required placeholder="e.g. Sunday Writers’ Circle" />
+      <TextField label="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} maxLength={80} required placeholder="e.g. Sunday Writers’ Circle" />
       <TextArea label="What’s it for?" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={280} rows={2} />
       <div className="grid grid-cols-2 gap-3">
         <Select label="Kind of room" options={HOSTED_ROOM_TYPES.map((t) => t.label)} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })} />
@@ -141,7 +141,7 @@ function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
         <DoorOpen className="h-5 w-5 shrink-0 text-teal-deep" /> Any PLACES member with the link can join while there’s room.
       </Card>
       <Button type="submit" size="lg" disabled={busy} className="w-full !text-base">
-        {busy ? 'Opening…' : 'Open my room'}
+        {busy ? 'Creating…' : 'Create my Virtual Place'}
       </Button>
     </form>
   )

@@ -204,6 +204,17 @@ describe.skipIf(!enabled)('virtual spaces (Supabase)', () => {
     await admin.from('virtual_spaces').update({ is_active: true, max_participants: 20 }).eq('id', townHall.id).throwOnError()
   })
 
+  it('lets members with a profile photo in, keeping only real photo links', async () => {
+    // Regression: the photo check once used a regex repetition count Postgres rejects, so members with a photo couldn't enter.
+    const photo = 'https://zeveszwhbsguwnvuzfwd.supabase.co/storage/v1/object/public/media/u1/avatar.webp'
+    const withPhoto = await users[1].rpc('join_virtual_space', { p_space_id: townHall.id, p_avatar_url: photo })
+    expect(withPhoto.error).toBeNull()
+    expect(withPhoto.data).toMatchObject({ avatar_url: photo })
+    const junk = await users[1].rpc('join_virtual_space', { p_space_id: townHall.id, p_avatar_url: 'javascript:alert(1)' })
+    expect(junk.data).toMatchObject({ avatar_url: null })
+    await users[1].rpc('leave_virtual_space', { p_space_id: townHall.id })
+  })
+
   it('requires an account to enter', async () => {
     const join = await anon.rpc('join_virtual_space', { p_space_id: townHall.id })
     expect(join.error).not.toBeNull()

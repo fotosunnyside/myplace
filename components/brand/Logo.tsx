@@ -25,18 +25,18 @@ export function Logo({ className, variant = 'inline', href = '/' }: LogoProps) {
   return (
     <Link
       href={href}
-      aria-label="PLACES — home"
-      className={cn('group inline-flex items-center gap-2.5 text-navy', stacked && 'flex-col gap-0', className)}
+      aria-label="PLACES FOR US — home"
+      className={cn('group inline-flex shrink-0 items-center gap-2.5 text-navy', stacked && 'flex-col gap-0', className)}
     >
       {!stacked && <LogoMark className="h-9 w-9 transition-transform duration-500 ease-gentle group-hover:-rotate-6" />}
       <span className={cn('flex flex-col leading-none', stacked && 'items-center')}>
         <span
           className={cn(
-            'font-serif font-semibold tracking-[0.06em]',
-            stacked ? 'text-[1.6rem]' : 'text-[1.9rem]',
+            'whitespace-nowrap font-serif font-semibold tracking-[0.06em]',
+            stacked ? 'text-[1.6rem]' : 'text-[1.6rem] min-[1400px]:text-[1.9rem]',
           )}
         >
-          PLACES
+          PLACES<span className="ml-[0.28em] text-[0.62em] tracking-[0.1em]">FOR US</span>
         </span>
         <span
           className={cn(

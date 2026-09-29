@@ -176,7 +176,7 @@ export function OpportunityDetail() {
                 className="grid gap-4"
                 onSubmit={(e) => {
                   e.preventDefault()
-                  withAuth(() => perform((s, now) => apply(s, o.id, message, link, now), 'Application sent!'), 'Join PLACES to apply with your profile.')
+                  withAuth(() => perform((s, now) => apply(s, o.id, message, link, now), 'Application sent!'), 'Join PLACES FOR US to apply with your profile.')
                 }}
               >
                 <p className="font-semibold">Apply with your PLACES profile</p>
@@ -196,7 +196,7 @@ export function OpportunityDetail() {
                 withAuth(() => {
                   const r = perform((s, now) => openThread(s, o.postedById, { kind: 'opportunity', refId: o.id, label: o.title }, now))
                   if (r.ok) router.push(`/messages/?t=${r.id}`)
-                }, 'Join PLACES to message.')
+                }, 'Join PLACES FOR US to message.')
               }
             >
               <MessageCircle className="h-4 w-4" /> Ask a question

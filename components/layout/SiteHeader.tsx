@@ -51,10 +51,10 @@ export function SiteHeader() {
           : 'bg-gradient-to-b from-cream/85 via-cream/50 to-transparent',
       )}
     >
-      <div className="mx-auto flex h-[76px] max-w-[1600px] items-center gap-6 px-6 lg:px-10">
+      <div className="mx-auto flex h-[76px] max-w-[1600px] items-center gap-4 px-6 min-[1400px]:gap-6 min-[1400px]:px-10">
         <Logo />
 
-        <nav aria-label="Primary" className="ml-auto hidden items-center gap-1 lg:ml-[5vw] lg:flex xl:ml-[8vw]">
+        <nav aria-label="Primary" className="ml-auto hidden items-center gap-0.5 lg:ml-[2vw] lg:flex min-[1400px]:ml-[8vw] min-[1400px]:gap-1">
           {primaryNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
@@ -62,17 +62,17 @@ export function SiteHeader() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={cn('relative rounded-full px-4 py-2 text-[0.92rem] font-medium text-navy transition-colors hover:bg-navy/[0.04]', active && 'text-teal-deep')}
+                className={cn('relative whitespace-nowrap rounded-full px-2.5 py-2 text-[0.92rem] min-[1400px]:px-4 font-medium text-navy transition-colors hover:bg-navy/[0.04]', active && 'text-teal-deep')}
               >
                 {item.label}
-                {active && <span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-teal" />}
+                {active && <span className="absolute inset-x-2.5 -bottom-0.5 min-[1400px]:inset-x-4 h-0.5 rounded-full bg-teal" />}
               </Link>
             )
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 lg:gap-4">
-          <SearchField placeholder="Search people, places, products..." className="w-[clamp(180px,18vw,300px)]" />
+        <div className="ml-auto flex items-center gap-2 min-[1400px]:gap-4">
+          <SearchField placeholder="Search people, places, products..." className="w-[clamp(150px,15vw,300px)] min-[1400px]:w-[clamp(180px,18vw,300px)]" />
           {!ready ? (
             <span className="h-11 w-[150px]" aria-hidden />
           ) : account ? (
@@ -92,11 +92,11 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Button size="sm" variant="ghost" onClick={() => openAuth({ mode: 'signin' })} className="!h-10">
+              <Button size="sm" variant="ghost" onClick={() => openAuth({ mode: 'signin' })} className="!h-10 shrink-0 whitespace-nowrap">
                 Sign in
               </Button>
-              <Button size="sm" onClick={() => openAuth({ mode: 'join' })} className="!h-10 !px-5">
-                Join PLACES
+              <Button size="sm" onClick={() => openAuth({ mode: 'join' })} className="!h-10 shrink-0 whitespace-nowrap !px-5" aria-label="Join PLACES FOR US">
+                Join<span className="hidden min-[1400px]:inline">&nbsp;PLACES FOR US</span>
               </Button>
             </>
           )}
@@ -143,7 +143,7 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
         <Avatar src={avatar} alt="" name={name} size={46} ring />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-72overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-lift">
+        <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-72 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-lift">
           <p className="px-3 pb-2 pt-2 text-sm font-semibold">{name}</p>
           {items.map(({ label, note, href, icon: Icon }) => (
             <Link key={href} role="menuitem" href={href} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-ivory">

@@ -66,7 +66,7 @@ export function AdvertisePage() {
       } else if (confirm(`Stripe isn’t connected for ads yet, so this books a free test ad (normally ${formatPrice(plan.price)}). Continue?`)) {
         perform((s, t) => createAd(s, input, 'test', t), 'Test ad booked.')
       }
-    }, 'Join PLACES to advertise your business.')
+    }, 'Join PLACES FOR US to advertise your business.')
   }
 
   return (

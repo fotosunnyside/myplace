@@ -48,10 +48,18 @@ jobs:
       - run: npx playwright test
       # The deployed build connects to the PLACES backend when its public settings are present.
       # Only public values belong here: the Supabase URL, the anon key and the media provider's name.
+      # With a custom domain (repository variable CUSTOM_DOMAIN, e.g. placesforus.com) the site is served from the
+      # domain's root instead of /<repository>/.
       - name: Build for deploy
         if: github.event_name != 'pull_request'
-        run: npm run build
+        run: |
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            export PAGES_BASE_PATH="" NEXT_PUBLIC_SITE_URL="https://$CUSTOM_DOMAIN"
+          fi
+          npm run build
+          if [ -n "$CUSTOM_DOMAIN" ]; then echo "$CUSTOM_DOMAIN" > out/CNAME; fi
         env:
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
           # Public values (safe to commit). Repository variables override them.
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://zeveszwhbsguwnvuzfwd.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || 'sb_publishable_7LMrPUqFLySJdJRZ_0kKYA_Kk_0r5Fc' }}
@@ -95,7 +103,7 @@ jobs:
           SUPABASE_TEST_SERVICE_KEY: ${{ env.SERVICE_ROLE_KEY }}
 
   # The whole shared world in a browser against a real Supabase stack: two people across every Place,
-  # Virtual Spaces admin, security checks. Reported, but doesn't hold up a release.
+  # Virtual Places admin, security checks. Reported, but doesn't hold up a release.
   cloud-journeys:
     runs-on: ubuntu-latest
     steps:

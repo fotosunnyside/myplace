@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { Folder, FolderPlus, Send, Sparkles, Trash2 } from 'lucide-react'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { PostCard } from '@/components/cards'
 import { Picture } from '@/components/ui/Picture'
 import { FilterPills } from '@/components/ui/FilterPills'
 import { Avatar, Button, Card } from '@/components/ui/primitives'
 import { SponsoredPost } from '@/components/ads/AdSlot'
+import { VirtualPlacesPanel } from '@/components/spaces/VirtualPlacesPanel'
 import { Composer } from './Composer'
 import { ProfileSummary } from './ProfileSummary'
 import { activeAd, createCollection, deleteCollection, toggleFollow, toggleInCollection } from '@/lib/store/actions'
@@ -19,13 +21,27 @@ import { cn } from '@/lib/cn'
 
 const OWN_TABS = ['Profile', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
 const OTHER_TABS = ['Posts', 'Friends'] as const
-type Tab = (typeof OWN_TABS)[number]
+/** YourPlace itself also holds Virtual Places (MyPlace used to). */
+const HOME_TABS = ['Profile', 'Virtual Places', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
+type Tab = (typeof HOME_TABS)[number]
+/** `?tab=` values for links straight to a tab. */
+const TAB_PARAM: Partial<Record<string, Tab>> = { places: 'Virtual Places', posts: 'Posts', friends: 'Friends', collections: 'Collections', saved: 'Saved' }
+
+/** Follows `?tab=` (e.g. /yourplace/?tab=places), including when a link changes it while YourPlace is open. */
+function TabFromUrl({ onTab }: { onTab: (t: Tab) => void }) {
+  const tab = TAB_PARAM[useSearchParams().get('tab') ?? '']
+  useEffect(() => {
+    if (tab) onTab(tab)
+  }, [tab, onTab])
+  return null
+}
 
 /** A person's home in PLACES — yours (editable) or someone else's. */
 /** `home`: this is YourPlace itself — the PLACES rooms sit under the profile panel and sponsored posts appear in the feed. */
 export function ProfileView({ p, own, compact = false, preview = false, home = false }: { p: Person; own: boolean; compact?: boolean; preview?: boolean; home?: boolean }) {
-  const tabs: readonly Tab[] = own || preview ? OWN_TABS : OTHER_TABS
+  const tabs: readonly Tab[] = home ? HOME_TABS : own || preview ? OWN_TABS : OTHER_TABS
   const [tab, setTab] = useState<Tab>(tabs[0])
+  const showTab = useCallback((t: Tab) => tabs.includes(t) && setTab(t), [tabs])
 
   return (
     <div>
@@ -33,15 +49,20 @@ export function ProfileView({ p, own, compact = false, preview = false, home = f
         <div className="mb-2 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-teal-wash/70 px-4 py-3 text-sm text-teal-deep @3xl:mt-6">
           <span>This is an example home. Join to make your own place in PLACES.</span>
           <Button size="sm" onClick={() => openAuth({ mode: 'join' })}>
-            Join PLACES
+            Join PLACES FOR US
           </Button>
         </div>
+      )}
+      {home && (
+        <Suspense>
+          <TabFromUrl onTab={showTab} />
+        </Suspense>
       )}
       <nav aria-label="Profile sections" className="scrollbar-none flex gap-4 overflow-x-auto border-b border-line/80 px-4 @3xl:gap-9 @3xl:px-0">
         {tabs.map((t) => (
           <button
             key={t}
-            onClick={() => (preview && t !== 'Profile' && t !== 'Posts' ? openAuth({ mode: 'join', reason: 'Join PLACES to build your own home.' }) : setTab(t))}
+            onClick={() => (preview && t !== 'Profile' && t !== 'Posts' && t !== 'Virtual Places' ? openAuth({ mode: 'join', reason: 'Join PLACES FOR US to build your own home.' }) : setTab(t))}
             aria-current={tab === t ? 'page' : undefined}
             className={cn('relative shrink-0 py-2.5 text-[0.62rem] font-medium transition-colors @3xl:py-4 @3xl:text-[0.95rem]', tab === t ? 'font-semibold text-navy' : 'text-navy-soft hover:text-navy')}
           >
@@ -54,6 +75,7 @@ export function ProfileView({ p, own, compact = false, preview = false, home = f
       <div className="grid grid-cols-[42%_1fr] gap-3 p-4 @3xl:grid-cols-[300px_1fr] @3xl:gap-10 @3xl:px-0 @3xl:py-8">
         <ProfileSummary p={p} own={own} compact={compact} rooms={home} />
         <div className="min-w-0">
+          {tab === 'Virtual Places' && <VirtualPlacesPanel />}
           {tab === 'Profile' && <Feed p={p} own={own || preview} compact={compact} mode="home" sponsored={home} />}
           {tab === 'Posts' && <Feed p={p} own={own} compact={compact} mode="mine" />}
           {tab === 'Friends' && <Friends p={p} own={own} />}

@@ -20,7 +20,7 @@ export function AuthDialog() {
   const [shown, setShown] = useState<AuthRequest | null>(req)
   if (req && req !== shown) setShown(req)
   return (
-    <Dialog open={!!req} onClose={closeAuth} title={shown?.mode === 'signin' ? 'Welcome back' : 'Join PLACES'} description={shown?.reason}>
+    <Dialog open={!!req} onClose={closeAuth} title={shown?.mode === 'signin' ? 'Welcome back' : 'Join PLACES FOR US'} description={shown?.reason}>
       {shown && <AuthForm key={shown.mode + (shown.reason ?? '')} req={shown} />}
     </Dialog>
   )
@@ -45,7 +45,7 @@ function AuthForm({ req }: { req: AuthRequest }) {
 
   const local = () =>
     mode === 'join'
-      ? perform((s, now) => signUp(s, { name, username, email, avatar, location, interests }, now), `Welcome to PLACES, ${name.split(' ')[0]}!`)
+      ? perform((s, now) => signUp(s, { name, username, email, avatar, location, interests }, now), `Welcome to PLACES FOR US, ${name.split(' ')[0]}!`)
       : perform((s) => signIn(s, email), 'Signed in.')
 
   /** With the backend connected, the cloud identity comes first; the on-device account follows it. */
@@ -55,8 +55,8 @@ function AuthForm({ req }: { req: AuthRequest }) {
       const existing = getState().accounts.find((a) => a.email === email.trim().toLowerCase())
       if (existing) {
         const { confirmEmail } = await backendSignUp({ email, password, name: existing.name, username: existing.username })
-        const r = perform((s) => signIn(s, existing.email), 'Your place is now connected to the PLACES cloud.')
-        if (r.ok && confirmEmail) toast('Check your email to confirm your account, then sign in to enter live spaces.')
+        const r = perform((s) => signIn(s, existing.email), 'Your place is now connected to PLACES FOR US.')
+        if (r.ok && confirmEmail) toast('Check your email to confirm your account, then sign in to enter Virtual Places.')
         return r.ok && done()
       }
       // Check the local rules (username, email format) before creating anything in the cloud.
@@ -67,7 +67,7 @@ function AuthForm({ req }: { req: AuthRequest }) {
       }
       const { confirmEmail } = await backendSignUp({ email, password, name, username })
       const r = local()
-      if (r.ok && confirmEmail) toast('Check your email to confirm your account, then sign in to enter live spaces.')
+      if (r.ok && confirmEmail) toast('Check your email to confirm your account, then sign in to enter Virtual Places.')
       return r.ok && done()
     }
     const profile = await backendSignIn(email, password)
@@ -96,7 +96,7 @@ function AuthForm({ req }: { req: AuthRequest }) {
       }
       if (!(await waitForAccount(userId))) return toast('Your account was created. Refresh the page to continue.', 'error')
       if (avatar) perform((s) => updateProfile(s, { avatar }))
-      toast(`Welcome to PLACES, ${name.split(' ')[0]}!`)
+      toast(`Welcome to PLACES FOR US, ${name.split(' ')[0]}!`)
       return done()
     }
     const { userId } = await backendSignIn(email, password)
@@ -162,7 +162,7 @@ function AuthForm({ req }: { req: AuthRequest }) {
       )}
 
       <p className="text-center text-sm text-muted">
-        {mode === 'join' ? 'Already have a place here?' : 'New to PLACES?'}{' '}
+        {mode === 'join' ? 'Already have a place here?' : 'New to PLACES FOR US?'}{' '}
         <button type="button" onClick={() => setMode(mode === 'join' ? 'signin' : 'join')} className="font-medium text-teal-deep hover:underline">
           {mode === 'join' ? 'Sign in' : 'Join'}
         </button>

@@ -22,7 +22,7 @@ const FRESH_MS = 2 * 60 * 60 * 1000
 
 export const TEST_STARTED: Record<PlanKind, string> = {
   pass: 'Test PLACES Pass started.',
-  host: 'Test Host a Space plan started.',
+  host: 'Test Create Virtual Places plan started.',
   create: 'Test Create in MindPlace plan started.',
 }
 
@@ -43,7 +43,7 @@ export function choosePlan(kind: PlanKind, then?: () => void) {
     if (!confirm(`Stripe isn’t connected for ${plan.name} yet, so this ${what}. Continue?`)) return
     const r = perform((s, t) => startPlan(s, kind, 'test', t), adding ? 'One more course or membership added.' : TEST_STARTED[kind])
     if (r.ok) then?.()
-  }, `Join PLACES to start ${PLANS[kind].name}.`)
+  }, `Join PLACES FOR US to start ${PLANS[kind].name}.`)
 }
 
 /**

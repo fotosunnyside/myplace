@@ -55,7 +55,7 @@ export function DiscussionDetail() {
             e.preventDefault()
             withAuth(() => {
               if (perform((s, now) => replyToDiscussion(s, d.id, draft, now), 'Reply posted.').ok) setDraft('')
-            }, 'Join PLACES to reply.')
+            }, 'Join PLACES FOR US to reply.')
           }}
           className="mt-4 flex items-end gap-2 rounded-3xl border border-line bg-white p-2 pl-5"
         >

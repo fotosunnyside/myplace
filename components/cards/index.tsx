@@ -52,7 +52,7 @@ export function SaveButton({ refItem, variant = 'bookmark', className, label }: 
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        withAuth(() => perform((s, now) => toggleSave(s, refItem, now), isSaved(world, refItem) ? 'Removed from Saved.' : 'Saved to YourPlace.'), 'Join PLACES to save things you love.')
+        withAuth(() => perform((s, now) => toggleSave(s, refItem, now), isSaved(world, refItem) ? 'Removed from Saved.' : 'Saved to YourPlace.'), 'Join PLACES FOR US to save things you love.')
       }}
       aria-pressed={on}
       aria-label={on ? 'Remove from saved' : 'Save'}
@@ -131,7 +131,7 @@ export function DiscussionRow({ d }: { d: Discussion }) {
 export function UpvoteButton({ d, up, big }: { d: Discussion; up: boolean; big?: boolean }) {
   return (
     <button
-      onClick={() => withAuth(() => perform((s) => toggleUpvote(s, d.id)), 'Join PLACES to upvote.')}
+      onClick={() => withAuth(() => perform((s) => toggleUpvote(s, d.id)), 'Join PLACES FOR US to upvote.')}
       aria-pressed={up}
       aria-label={`Upvote (${count(d.baseUpvotes, d.upvoters.length)})`}
       className={cn(
@@ -288,7 +288,7 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
             return (
               <button
                 key={o.id}
-                onClick={() => withAuth(() => perform((s) => votePoll(s, post.id, o.id)), 'Join PLACES to vote.')}
+                onClick={() => withAuth(() => perform((s) => votePoll(s, post.id, o.id)), 'Join PLACES FOR US to vote.')}
                 aria-pressed={myVote === o.id}
                 className={cn('relative overflow-hidden rounded-xl border px-4 py-2.5 text-left text-sm transition', myVote === o.id ? 'border-teal' : 'border-line hover:border-teal/40')}
               >
@@ -308,7 +308,7 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
       {!compact && (
         <footer className="mt-3 hidden items-center gap-6 text-sm text-muted @3xl:flex">
           <button
-            onClick={() => withAuth(() => perform((s) => toggleLike(s, post.id)), 'Join PLACES to like posts.')}
+            onClick={() => withAuth(() => perform((s) => toggleLike(s, post.id)), 'Join PLACES FOR US to like posts.')}
             aria-pressed={liked}
             aria-label={`Like · ${formatCount(count(post.baseLikes, post.likes.length))}`}
             className={cn('inline-flex items-center gap-1.5 hover:text-navy', liked && 'text-coral')}
@@ -347,7 +347,7 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
               e.preventDefault()
               withAuth(() => {
                 if (perform((s, now) => addComment(s, post.id, draft, now)).ok) setDraft('')
-              }, 'Join PLACES to comment.')
+              }, 'Join PLACES FOR US to comment.')
             }}
             className="flex items-center gap-2 rounded-full border border-line bg-white p-1 pl-4"
           >

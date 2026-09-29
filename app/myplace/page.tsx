@@ -1,8 +1,15 @@
 import type { Metadata } from 'next'
-import { MyPlacePage } from '@/components/spaces/MyPlacePage'
+import { Suspense } from 'react'
+import { Redirect } from '@/components/spaces/Redirect'
+import { PLACES_HREF } from '@/lib/spaces/rooms'
 
-export const metadata: Metadata = { title: 'Virtual Spaces', description: 'Live rooms in PLACES: Town Hall, the Accountability Department, and spaces members host.' }
+export const metadata: Metadata = { title: 'Virtual Places', robots: { index: false } }
 
+/** MyPlace is now part of YourPlace: its Virtual Places live in a YourPlace tab. */
 export default function Page() {
-  return <MyPlacePage />
+  return (
+    <Suspense>
+      <Redirect to={PLACES_HREF} />
+    </Suspense>
+  )
 }

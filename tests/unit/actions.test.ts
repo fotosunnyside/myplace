@@ -13,7 +13,7 @@ describe('accounts', () => {
   it('signs up, welcomes and signs in', () => {
     const s = joined()
     expect(s.accounts).toHaveLength(1)
-    expect(s.threads[0].messages[0].body).toMatch(/Welcome to PLACES, Sam Rivera/)
+    expect(s.threads[0].messages[0].body).toMatch(/Welcome to PLACES FOR US, Sam Rivera/)
     expect(unreadNotifications(s)).toBe(1)
     const out = A.signOut(s)
     expect(out.accountId).toBeNull()
