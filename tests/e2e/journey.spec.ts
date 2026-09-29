@@ -375,6 +375,7 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
 
   // Mic and camera toggle.
   const mic = page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: /Mute|Unmute/ })
+  await expect(mic).toBeEnabled() // let the mic finish turning on (or not) before reading it
   const before = await mic.getAttribute('aria-pressed')
   await mic.click()
   await expect(mic).not.toHaveAttribute('aria-pressed', before!)
