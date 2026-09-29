@@ -42,12 +42,12 @@ export function HostSpaces() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="host" className="font-serif text-[1.9rem] leading-tight">
-            {mine.length ? 'Your spaces' : 'Host your own space'}
+            {mine.length ? 'Your spaces' : 'Make your own room'}
           </h2>
           <p className="text-navy-soft">Meetings, classes, study groups, masterminds and gatherings — with a link people can join.</p>
         </div>
         <Button onClick={() => withAuth(() => setOpen(true), 'Join PLACES to host a space.')}>
-          <Plus className="h-4 w-4" /> Host a space
+          <Plus className="h-4 w-4" /> Make your own room
         </Button>
       </div>
 
@@ -91,7 +91,7 @@ export function HostSpaces() {
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title={canHost ? 'Host a space' : 'Host your own spaces'}
+        title={canHost ? 'Make your own room' : 'Make your own rooms'}
         description={canHost ? `Rooms hold up to ${HOSTED_SPACES.maxParticipants} people for now. You can host up to ${HOSTED_SPACES.roomsPerHost}.` : 'Official PLACES rooms are always free to join. Hosting your own takes a plan.'}
         className={canHost ? undefined : 'md:!max-w-3xl'}
       >

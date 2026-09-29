@@ -28,6 +28,15 @@ describe('accounts', () => {
     expect(() => A.signIn(s, 'ghost@example.com')).toThrow(/No account/)
   })
 
+  it('keeps a website on the profile, as a full link', () => {
+    const s = A.updateProfile(joined(), { website: 'mystudio.com' })
+    expect(s.accounts[0].website).toBe('https://mystudio.com')
+    expect(A.updateProfile(s, { website: 'http://old.example.org/path' }).accounts[0].website).toBe('http://old.example.org/path')
+    expect(A.updateProfile(s, { website: '  ' }).accounts[0].website).toBeUndefined()
+    expect(() => A.updateProfile(s, { website: 'not a site' })).toThrow(/website/)
+    expect(() => A.updateProfile(s, { website: 'javascript:alert(1)' })).toThrow(/website/)
+  })
+
   it('requires sign-in for actions', () => {
     expect(() => A.createPost(seedWorld(NOW), { body: 'hi' }, NOW)).toThrow(A.ActionError)
   })

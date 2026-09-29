@@ -22,6 +22,8 @@ export interface Person {
   bio: string
   location: string
   headline: string
+  /** Their own website, shown on their profile. */
+  website?: string
   interests: string[]
   skills: string[]
   joinedAt: number

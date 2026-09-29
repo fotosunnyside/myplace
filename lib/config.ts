@@ -20,8 +20,8 @@ export interface PlanInfo {
 export const PLANS: Record<PlanKind, PlanInfo> = {
   /** Publish a course or membership in MindPlace — per published course or membership. */
   create: { kind: 'create', name: 'Create in MindPlace', price: 700, link: process.env.NEXT_PUBLIC_CREATE_PLAN_LINK ?? '' },
-  /** Host your own virtual spaces. */
-  host: { kind: 'host', name: 'Host a Space', price: 1100, link: process.env.NEXT_PUBLIC_HOST_PLAN_LINK ?? '' },
+  /** Make your own rooms (host your own virtual spaces). */
+  host: { kind: 'host', name: 'Host a Space', price: 1000, link: process.env.NEXT_PUBLIC_HOST_PLAN_LINK ?? '' },
   /** One Pass. Every Place. */
   pass: { kind: 'pass', name: 'PLACES Pass', price: 2100, link: process.env.NEXT_PUBLIC_PASS_LINK ?? '' },
 }

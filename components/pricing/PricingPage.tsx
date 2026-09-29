@@ -160,8 +160,8 @@ export function PricingPage() {
           <Option
             icon={<DoorOpen className="h-5 w-5" />}
             title={`Host a Space — ${money(PLANS.host.price)}/month`}
-            text="Create your own virtual meeting, community, class, networking, or gathering spaces."
-            action={<Button variant="soft" size="sm" onClick={() => choosePlan('host')}>Host a Space</Button>}
+            text="Make your own rooms: virtual meetings, communities, classes, networking or gatherings."
+            action={<Button variant="soft" size="sm" onClick={() => choosePlan('host')}>Make your own room</Button>}
           />
           <Option
             icon={<Users className="h-5 w-5" />}

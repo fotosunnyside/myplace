@@ -6,6 +6,7 @@ import { peopleHere, roomBehaviour, roomHref } from '@/lib/spaces/rooms'
 import type { VirtualSpace } from '@/lib/spaces/types'
 import { useRoomSession } from '@/lib/spaces/live'
 import { withAuth } from '@/lib/store/hooks'
+import { openToGuests } from '@/lib/spaces/guest'
 import { cn } from '@/lib/cn'
 import { RoomBackdrop } from './RoomBackdrop'
 
@@ -38,7 +39,8 @@ export function SpaceCard({ space, count, size = 'lg' }: { space: VirtualSpace; 
   const session = useRoomSession()
   const behaviour = roomBehaviour(space)
   const inside = session.space?.id === space.id && (session.phase === 'in-room' || session.phase === 'reconnecting')
-  const enter = () => withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`)
+  // Rooms open to guests take visitors straight to the door (name only); other rooms ask them to join first.
+  const enter = () => (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`))
 
   return (
     <article

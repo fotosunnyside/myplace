@@ -18,6 +18,7 @@ import type { VirtualSpace } from '@/lib/spaces/types'
 import { useHydrated, useMe } from '@/lib/store/hooks'
 import { orderedDistricts } from '@/lib/world/districts'
 import { openAuth } from '@/lib/ui'
+import { dropInAsGuest, openToGuests, useGuest } from '@/lib/spaces/guest'
 import { cn } from '@/lib/cn'
 import { ParticipantBubble, type BubblePerson } from './ParticipantBubble'
 import { deviceHint, RoomControls } from './RoomControls'
@@ -84,9 +85,12 @@ export function VirtualSpaceRoom({ space, autoEnter }: { space: VirtualSpace; au
   const room = mine && session.space ? session.space : space
   const [prefs, setPrefs] = useState<{ camera: boolean; mic: boolean } | null>(null)
 
-  const profile = account ? { name: account.name, avatar: account.avatar } : null
+  const guest = useGuest()
+  const guestOk = openToGuests(space)
+  const asGuest = !account && !!guest && guestOk
+  const profile = account ? { name: account.name, avatar: account.avatar } : asGuest ? { name: guest!.name } : null
   const cloudPending = backendConfigured && cloud.status === 'loading'
-  const signedIn = !!account && (!backendConfigured || cloud.status === 'signed-in')
+  const signedIn = (!!account && (!backendConfigured || (cloud.status === 'signed-in' && !cloud.guest))) || asGuest
 
   useEffect(() => {
     if (!ready) return
@@ -145,6 +149,7 @@ export function VirtualSpaceRoom({ space, autoEnter }: { space: VirtualSpace; au
           signedIn={signedIn}
           waiting={!ready || cloudPending || (autoEnter && signedIn && space.isActive)}
           hasAccount={!!account}
+          guestOk={guestOk && !account}
           onEnter={() => enter()}
           onRetry={() => void roomSession.retry()}
         />
@@ -260,6 +265,7 @@ function Threshold({
   signedIn,
   waiting,
   hasAccount,
+  guestOk,
   onEnter,
   onRetry,
 }: {
@@ -272,6 +278,7 @@ function Threshold({
   signedIn: boolean
   waiting: boolean
   hasAccount: boolean
+  guestOk: boolean
   onEnter: () => void
   onRetry: () => void
 }) {
@@ -313,6 +320,8 @@ function Threshold({
     )
 
   if (phase === 'missing') return <StateCard title="We couldn’t find that room" body="It may have moved or been renamed." actions={<BackToMyPlace />} />
+
+  if ((!signedIn || phase === 'signin') && guestOk) return <GuestDoor space={space} onEnter={onEnter} />
 
   if (!signedIn || phase === 'signin')
     return (
@@ -397,6 +406,61 @@ function StateCard({ title, body, actions, busy, icon, tone }: { title: string; 
         {body && <p className="mt-2 text-navy-soft">{body}</p>}
         {actions && <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{actions}</div>}
       </motion.div>
+    </div>
+  )
+}
+
+/** Rooms open to guests: drop in with just a name — no account, no friction. */
+function GuestDoor({ space, onEnter }: { space: VirtualSpace; onEnter: () => void }) {
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const go = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await dropInAsGuest(name)
+      setTimeout(onEnter, 300) // let the guest identity settle, then step in
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="absolute inset-0 z-10 grid place-items-center px-4">
+      <form onSubmit={go} className="w-full max-w-md rounded-panel bg-white/95 p-6 text-navy shadow-lift backdrop-blur md:p-8">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-teal-deep">Free · no account needed</p>
+        <h2 className="mt-2 font-serif text-3xl leading-tight">{space.name}</h2>
+        <p className="mt-2 text-navy-soft">{space.description}</p>
+        <label className="mt-5 block text-sm font-medium" htmlFor="guest-name">
+          Your name
+        </label>
+        <input
+          id="guest-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          required
+          autoFocus
+          placeholder="How people will see you"
+          className="mt-1.5 h-12 w-full rounded-2xl border border-line bg-white px-4 text-base outline-none focus:border-teal focus:ring-2 focus:ring-teal/30"
+        />
+        {error && (
+          <p role="alert" className="mt-2 text-sm text-[#a2412c]">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="lg" disabled={busy} className="mt-4 w-full !text-base">
+          {busy ? 'Stepping in…' : 'Drop in'}
+        </Button>
+        <p className="mt-4 text-center text-sm text-muted">
+          Already a member?{' '}
+          <button type="button" onClick={() => openAuth({ mode: 'signin', onDone: () => setTimeout(onEnter, 300) })} className="font-medium text-teal-deep hover:underline">
+            Sign in
+          </button>
+        </p>
+      </form>
     </div>
   )
 }
@@ -566,6 +630,17 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
               <X className="h-4 w-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {!me && (
+        // Guests: a gentle way into the rest of PLACES, never in the way of the room.
+        <div className="absolute left-4 top-20 z-30 max-w-[15rem] rounded-2xl bg-white/90 p-3 text-sm text-navy shadow-soft backdrop-blur md:left-6 md:top-24">
+          <p className="font-medium">You’re here as a guest.</p>
+          <p className="mt-0.5 text-xs text-navy-soft">PLACES is free: a profile, courses, a marketplace and work — all in one place.</p>
+          <button onClick={() => openAuth({ mode: 'join', reason: 'Make your own place in PLACES — it’s free.' })} className="mt-2 text-xs font-semibold text-teal-deep hover:underline">
+            Join PLACES free →
+          </button>
         </div>
       )}
 

@@ -20,9 +20,9 @@ const SINGLE: Record<PlanContext, { title: string; lines: string[]; cta: string 
     cta: `Publish for ${money(PLANS.create.price)}/month`,
   },
   space: {
-    title: `${PLANS.host.name} — ${money(PLANS.host.price)}/month`,
-    lines: ['Create your own meeting, community, class, networking or gathering spaces.'],
-    cta: `Host a Space — ${money(PLANS.host.price)}/month`,
+    title: `Make your own rooms — ${money(PLANS.host.price)}/month`,
+    lines: ['Your own meetings, communities, classes, study groups, networking and gatherings — with a link anyone in PLACES can join.'],
+    cta: `Make your own rooms — ${money(PLANS.host.price)}/month`,
   },
   job: {
     title: `Post this opportunity — ${money(JOB_POST.price)}`,
@@ -36,7 +36,10 @@ const PASS_COPY: Record<PlanContext, { title: string; body: string }> = {
     title: PASS,
     body: 'Publish courses and memberships with 0% PLACES platform fees, host virtual spaces, post WorkPlace opportunities, and unlock creator privileges across PLACES.',
   },
-  space: { title: `Included with ${PASS}`, body: 'Host spaces, publish courses and memberships with 0% PLACES platform fees, and post WorkPlace opportunities.' },
+  space: {
+    title: `Included with ${PASS}`,
+    body: 'Make your own rooms — plus more across PLACES: publish courses and memberships with 0% PLACES platform fees, and post WorkPlace opportunities.',
+  },
   job: { title: 'Included with PLACES Pass', body: `Post opportunities without the per-post charge — plus course publishing and hosting, for ${money(PLANS.pass.price)}/month.` },
 }
 

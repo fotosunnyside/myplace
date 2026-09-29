@@ -89,14 +89,14 @@ appear only at the moment someone tries a paid action. All prices live in `lib/c
 | --- | --- | --- |
 | PLACES account | Free | |
 | Create in MindPlace | $7/month per published course or membership | + 5% PLACES fee on paid enrollments and membership payments |
-| Host a Space | $11/month | Members' own rooms: up to 12 people and 5 rooms each for now (not unlimited video) |
+| Host a Space ("Make your own room") | $10/month | Members' own rooms: up to 12 people and 5 rooms each for now (not unlimited video) |
 | **PLACES Pass** | **$21/month** | Publishing, **0%** course/membership fee, hosting, and WorkPlace posts included |
 | WorkPlace post | $2 per post | Included with PLACES Pass. Browsing and applying are free |
 | MarketPlace | Local sales free · 1% on shipped sales | The Pass does **not** remove the 1% |
 | Sponsored placement | $10/week per Place | Never included in the Pass. Also appears once in the YourPlace feed |
 
 Creators choose **free**, **one-time**, or **recurring monthly** pricing for each course or membership (more intervals can be added to
-`BILLING` in `components/detail/CourseEditor.tsx` later). Create + Host ($18) plus 5% equals the Pass at about $60/month of course
+`BILLING` in `components/detail/CourseEditor.tsx` later). Create + Host ($17) plus 5% equals the Pass at about $80/month of course
 revenue — past that the Pass is cheaper, on purpose. Payment processing fees are separate from PLACES fees.
 
 To take real payments, create a **Stripe Payment Link** for each paid item, set its **After payment** redirect, and add it as a GitHub
@@ -107,7 +107,7 @@ runs in clearly labelled test mode.
 | --- | --- | --- | --- |
 | PLACES Pass | recurring $21/month | `…/myplace/pricing/?plan=started` | `PASS_LINK` |
 | Create in MindPlace | recurring $7/month (allow quantity) | `…/myplace/pricing/?plan=started` | `CREATE_PLAN_LINK` |
-| Host a Space | recurring $11/month | `…/myplace/pricing/?plan=started` | `HOST_PLAN_LINK` |
+| Host a Space | recurring $10/month | `…/myplace/pricing/?plan=started` | `HOST_PLAN_LINK` |
 | Job post | one-time $2 | `…/myplace/workplace/opportunity/?publish=1` | `JOB_POST_LINK` |
 | Sponsored placement | one-time $10 / $40 | `…/myplace/advertise/?paid=1` | `AD_WEEK_LINK`, `AD_MONTH_LINK` |
 

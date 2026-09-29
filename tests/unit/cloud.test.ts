@@ -72,6 +72,7 @@ describe('what actions write to the shared world', () => {
     expect(summary(changes(s, toggleSave(s, { kind: 'product', refId: 'prd_mug' }, NOW)))).toEqual(['insert saved_items ×1'])
     const edited = updateProfile(s, { bio: 'Poet of science', skills: ['Maths'] })
     expect(changes(s, edited)).toEqual([{ kind: 'update', table: 'profiles', match: { id: meOf(s) }, values: { bio: 'Poet of science', skills: ['Maths'] } }])
+    expect(changes(edited, updateProfile(edited, { website: 'ada.dev' }))).toEqual([{ kind: 'update', table: 'profiles', match: { id: meOf(s) }, values: { website: 'https://ada.dev' } }])
   })
 
   it('opens a shop, lists a product and orders — without sending prices for orders', () => {

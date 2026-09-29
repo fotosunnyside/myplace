@@ -7,7 +7,7 @@ import { AD_DAYS, SALES_FEE_RATE } from '@/lib/store/actions'
 describe('pricing', () => {
   it('has the published prices', () => {
     expect(PLANS.create.price).toBe(700)
-    expect(PLANS.host.price).toBe(1100)
+    expect(PLANS.host.price).toBe(1000)
     expect(PLANS.pass.price).toBe(2100)
     expect(JOB_POST.price).toBe(200)
     expect(ADS.week.price).toBe(1000)
@@ -17,13 +17,13 @@ describe('pricing', () => {
     expect(SALES_FEE_RATE).toBe(0.01)
   })
 
-  it('makes the Pass the better deal once a creator earns about $60/month', () => {
-    // Create ($7) + Host ($11) + 5% of course revenue vs the Pass ($21) at 0%.
+  it('makes the Pass the better deal once a creator earns about $80/month', () => {
+    // Create ($7) + Host ($10) + 5% of course revenue vs the Pass ($21) at 0%.
     const separate = (revenue: number) => PLANS.create.price + PLANS.host.price + revenue * COURSE_FEE_RATE
     expect(PLANS.create.price + PLANS.host.price).toBeLessThan(PLANS.pass.price)
-    expect(separate(6000)).toBe(PLANS.pass.price)
-    expect(separate(5000)).toBeLessThan(PLANS.pass.price)
-    expect(separate(7000)).toBeGreaterThan(PLANS.pass.price)
+    expect(separate(8000)).toBe(PLANS.pass.price)
+    expect(separate(7000)).toBeLessThan(PLANS.pass.price)
+    expect(separate(9000)).toBeGreaterThan(PLANS.pass.price)
   })
 
   it('matches what the database enforces', () => {

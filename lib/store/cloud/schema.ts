@@ -22,7 +22,7 @@ export interface TableSpec {
 
 /** In dependency order: creates run top to bottom, removals bottom to top. */
 export const TABLES = {
-  profiles: { pk: ['id'], update: ['name', 'avatar', 'bio', 'location', 'headline', 'interests', 'skills', 'open_to'], public: true },
+  profiles: { pk: ['id'], update: ['name', 'avatar', 'bio', 'location', 'headline', 'website', 'interests', 'skills', 'open_to'], public: true },
   member_plans: { pk: ['user_id', 'kind'], insert: true, update: ['quantity', 'status', 'via', 'since', 'renews_at'], public: true },
   follows: { pk: ['follower_id', 'followee_id'], insert: true, del: true, public: true },
   posts: { pk: ['id'], insert: true, update: ['body', 'image', 'link', 'location', 'poll', 'audience'], del: true, public: true, limit: { column: 'created_at', rows: 500 } },

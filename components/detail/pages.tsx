@@ -374,7 +374,7 @@ function SettingsForm({ acc }: { acc: Account }) {
   const router = useRouter()
   const world = useWorld()
   const cloud = getWorldMode() === 'cloud'
-  const [f, setF] = useState({ name: acc.name, headline: acc.headline, bio: acc.bio, location: acc.location, skills: acc.skills.join(', ') })
+  const [f, setF] = useState({ name: acc.name, headline: acc.headline, bio: acc.bio, location: acc.location, website: acc.website ?? '', skills: acc.skills.join(', ') })
   const [avatar, setAvatar] = useState<string | undefined>(acc.avatar || undefined)
   const [interests, setInterests] = useState(acc.interests)
   const [openTo, setOpenTo] = useState<string[]>(acc.openTo)
@@ -415,6 +415,7 @@ function SettingsForm({ acc }: { acc: Account }) {
                 headline: f.headline.trim(),
                 bio: f.bio.trim(),
                 location: f.location.trim(),
+                website: f.website,
                 avatar: avatar ?? '',
                 interests,
                 openTo: openTo as Account['openTo'],
@@ -431,6 +432,7 @@ function SettingsForm({ acc }: { acc: Account }) {
           <TextField label="Headline" value={f.headline} onChange={set('headline')} placeholder="e.g. Ceramicist & teacher" maxLength={80} />
           <TextArea label="Bio" value={f.bio} onChange={set('bio')} rows={3} maxLength={300} />
           <TextField label="Location" value={f.location} onChange={set('location')} />
+          <TextField label="Website" type="text" inputMode="url" value={f.website} onChange={set('website')} placeholder="mystudio.com" maxLength={200} />
           <ChipPicker label="Interests" options={INTERESTS} value={interests} onChange={setInterests} />
         </Card>
         <Card className="grid gap-5 p-6">

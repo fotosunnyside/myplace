@@ -15,7 +15,8 @@ export type BackendSession =
   | { status: 'off' }
   | { status: 'loading' }
   | { status: 'signed-out' }
-  | { status: 'signed-in'; userId: string; email: string; accessToken: string }
+  /** `guest`: an anonymous session for dropping into rooms open to guests — not a PLACES account. */
+  | { status: 'signed-in'; userId: string; email: string; accessToken: string; guest: boolean; name: string }
 
 let session: BackendSession = backendConfigured ? { status: 'loading' } : { status: 'off' }
 const listeners = new Set<() => void>()
@@ -40,8 +41,19 @@ export function initBackendAuth() {
   started = true
   getSupabase()
     .then(async (sb) => {
-      const apply = (s: { user: { id: string; email?: string }; access_token: string } | null) =>
-        set(s ? { status: 'signed-in', userId: s.user.id, email: s.user.email ?? '', accessToken: s.access_token } : { status: 'signed-out' })
+      const apply = (s: { user: { id: string; email?: string; is_anonymous?: boolean; user_metadata?: { name?: unknown } }; access_token: string } | null) =>
+        set(
+          s
+            ? {
+                status: 'signed-in',
+                userId: s.user.id,
+                email: s.user.email ?? '',
+                accessToken: s.access_token,
+                guest: !!s.user.is_anonymous,
+                name: typeof s.user.user_metadata?.name === 'string' ? s.user.user_metadata.name : '',
+              }
+            : { status: 'signed-out' },
+        )
       sb.auth.onAuthStateChange((_event, s) => apply(s))
       const { data } = await sb.auth.getSession()
       apply(data.session)
@@ -73,6 +85,7 @@ export async function backendSignUp(
 ): Promise<{ confirmEmail: boolean; userId: string | null }> {
   if (input.password.length < 8) throw new BackendAuthError('Choose a password of at least 8 characters.')
   const sb = await getSupabase()
+  await leaveGuestSession(sb)
   const { data, error } = await sb.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
@@ -84,11 +97,36 @@ export async function backendSignUp(
 
 export async function backendSignIn(email: string, password: string): Promise<CloudProfile & { email: string; userId: string }> {
   const sb = await getSupabase()
+  await leaveGuestSession(sb)
   const { data, error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
   if (error) throw new BackendAuthError(friendly(error.message))
   const meta = (data.user.user_metadata ?? {}) as Partial<CloudProfile>
   const address = data.user.email ?? email
   return { email: address, name: meta.name || address.split('@')[0], username: meta.username || '', userId: data.user.id }
+}
+
+/** A guest who joins or signs in stops being a guest first. */
+async function leaveGuestSession(sb: Awaited<ReturnType<typeof getSupabase>>) {
+  if (session.status === 'signed-in' && session.guest) await sb.auth.signOut().catch(() => {})
+}
+
+/** True while this device is in a room as a guest (no PLACES account). */
+export const isGuestSession = (s: BackendSession = session) => s.status === 'signed-in' && s.guest
+
+/**
+ * Drops in as a guest with just a name: an anonymous session that can enter rooms open to guests and nothing else
+ * (the database gives guests no profile). Needs "Allow anonymous sign-ins" on the Supabase project.
+ */
+export async function backendGuestSignIn(name: string) {
+  const clean = name.trim().slice(0, 60)
+  if (!clean) throw new BackendAuthError('Add your name so people know who’s here.')
+  const sb = await getSupabase()
+  if (session.status === 'signed-in') {
+    if (session.guest && session.name !== clean) await sb.auth.updateUser({ data: { name: clean } })
+    return
+  }
+  const { error } = await sb.auth.signInAnonymously({ options: { data: { name: clean } } })
+  if (error) throw new BackendAuthError(/anonymous/i.test(error.message) ? 'Guest visits aren’t switched on yet. Join PLACES to come in — it’s free.' : friendly(error.message))
 }
 
 /** Whether a username is free in the shared world. */

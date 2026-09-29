@@ -38,6 +38,8 @@ interface Draft {
   description: string
   capacity: string
   isActive: boolean
+  /** Guests (no account) may drop in with just a name. */
+  guests: boolean
   allowCamera: boolean
   allowMicrophone: boolean
   backgroundStyle: BackgroundStyle
@@ -55,6 +57,7 @@ const draftFrom = (s: VirtualSpace): Draft => ({
   description: s.description,
   capacity: String(s.maxParticipants),
   isActive: s.isActive,
+  guests: s.visibility === 'public',
   allowCamera: s.allowCamera,
   allowMicrophone: s.allowMicrophone,
   backgroundStyle: s.backgroundStyle,
@@ -73,6 +76,7 @@ function patchFrom(d: Draft, s: VirtualSpace): SpacePatch {
   const cap = Number(d.capacity)
   if (d.capacity.trim() === '' || cap !== s.maxParticipants) patch.maxParticipants = d.capacity.trim() === '' ? NaN : cap
   if (d.isActive !== s.isActive) patch.isActive = d.isActive
+  if (d.guests !== (s.visibility === 'public')) patch.visibility = d.guests ? 'public' : 'members'
   if (d.allowCamera !== s.allowCamera) patch.allowCamera = d.allowCamera
   if (d.allowMicrophone !== s.allowMicrophone) patch.allowMicrophone = d.allowMicrophone
   if (d.focusX !== s.focusX) patch.focusX = d.focusX
@@ -205,6 +209,7 @@ function SpaceEditor({ space }: { space: VirtualSpace }) {
             onChange={(v) => set({ isActive: v === 'live' })}
           />
           {!draft.isActive && space.isActive && <p className="text-sm text-navy-soft">Closing sends everyone inside back to Spaces{inside ? ` (${inside} now)` : ''}, and the room shows as closed.</p>}
+          <Switch label="Open to guests — drop in with just a name, no account" on={draft.guests} onChange={(v) => set({ guests: v })} />
           <Switch label="Allow cameras" on={draft.allowCamera} onChange={(v) => set({ allowCamera: v })} />
           <Switch label="Allow microphones" on={draft.allowMicrophone} onChange={(v) => set({ allowMicrophone: v })} />
         </Section>

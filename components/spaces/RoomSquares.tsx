@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Users } from 'lucide-react'
+import { ArrowRight, Plus, Users } from 'lucide-react'
 import { featuredSpaces, roomHref } from '@/lib/spaces/rooms'
 import { useRoomSession } from '@/lib/spaces/live'
 import { useOccupancy, useSpaces } from '@/lib/spaces/store'
 import type { VirtualSpace } from '@/lib/spaces/types'
 import { withAuth } from '@/lib/store/hooks'
+import { openToGuests } from '@/lib/spaces/guest'
 import { cn } from '@/lib/cn'
 import { RoomBackdrop } from './RoomBackdrop'
 
@@ -36,6 +37,12 @@ export function RoomSquares({ className }: { className?: string }) {
       {list.map((s) => (
         <RoomSquare key={s.id} space={s} count={occupancy ? (occupancy[s.id] ?? 0) : null} />
       ))}
+      <Link
+        href="/myplace/?host=1"
+        className="flex items-center justify-center gap-1 rounded-card border border-dashed border-teal/40 bg-teal-wash/40 px-2 py-2.5 text-center text-[0.6rem] font-semibold text-teal-deep transition hover:bg-teal-wash @3xl:py-3.5 @3xl:text-sm"
+      >
+        <Plus className="h-3 w-3 @3xl:h-4 @3xl:w-4" /> Make your own room
+      </Link>
       <Link href="/myplace" className="text-[0.6rem] font-medium text-teal-deep hover:underline @3xl:text-sm">
         All spaces →
       </Link>
@@ -51,7 +58,9 @@ function RoomSquare({ space, count }: { space: VirtualSpace; count: number | nul
 
   return (
     <button
-      onClick={() => space.isActive && withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`)}
+      onClick={() =>
+        space.isActive && (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`))
+      }
       disabled={!space.isActive}
       aria-label={space.isActive ? label : `${space.name} is closed`}
       className="group relative isolate flex aspect-square w-full flex-col justify-end overflow-hidden rounded-card text-left shadow-soft ring-1 ring-navy/5 transition duration-500 ease-gentle enabled:hover:-translate-y-0.5 enabled:hover:shadow-lift disabled:cursor-default"

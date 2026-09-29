@@ -141,3 +141,30 @@ test('a room keeps you while you look around PLACES', async ({ browser }) => {
   await page.getByRole('link', { name: 'Return to Accountability Department' }).click()
   await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
 })
+
+test('someone from outside drops into the Accountability Department with just a name', async ({ browser }) => {
+  const ctx = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 1360, height: 900 } })
+  const page = await ctx.newPage()
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  const name = `Skool Friend ${run % 10000}`
+
+  await page.goto('accountability/')
+  await page.getByLabel('Your name').fill(name)
+  await page.getByRole('button', { name: 'Drop in' }).click()
+  await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('You’re here as a guest.')).toBeVisible()
+
+  // Present in the database under their name, with no PLACES profile.
+  const room = (await service().from('virtual_spaces').select('id').eq('slug', 'accountability-room').single()).data!.id
+  await expect.poll(async () => (await service().from('virtual_space_participants').select('display_name').eq('space_id', room).eq('display_name', name)).data?.length, { timeout: 15_000 }).toBe(1)
+  const { data: who } = await service().from('virtual_space_participants').select('user_id').eq('display_name', name).single()
+  expect((await service().from('profiles').select('id').eq('id', who!.user_id)).data).toEqual([])
+
+  // Browsing the rest of PLACES, they're still a visitor, invited to join.
+  await page.getByRole('button', { name: 'Leave' }).click()
+  await page.goto('yourplace/')
+  await expect(page.getByRole('button', { name: 'Join PLACES' }).filter({ visible: true }).first()).toBeVisible()
+  await service().auth.admin.deleteUser(who!.user_id)
+  expect(errors).toEqual([])
+})

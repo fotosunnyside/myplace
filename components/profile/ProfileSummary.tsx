@@ -2,13 +2,16 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Briefcase, MapPin, MessageCircle, Store } from 'lucide-react'
+import { BookOpen, Briefcase, Globe, MapPin, MessageCircle, Store } from 'lucide-react'
 import type { Person } from '@/lib/types'
 import { Avatar, Button, ButtonLink, Card } from '@/components/ui/primitives'
 import { RoomSquares } from '@/components/spaces/RoomSquares'
 import { openThread, toggleFollow } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
 import { enrollmentsOf, followerCount, followingOf, formatCount, isFollowing, shopOf } from '@/lib/store/selectors'
+
+/** "https://www.mystudio.com/" → "mystudio.com" */
+const siteLabel = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')
 
 /** `rooms`: show the official PLACES rooms under the panel (your own YourPlace). */
 export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: Person; own: boolean; compact?: boolean; rooms?: boolean }) {
@@ -41,6 +44,16 @@ export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: 
               <p className="mt-0.5 flex items-center gap-1 text-[0.58rem] text-muted @3xl:text-sm">
                 <MapPin className="h-2.5 w-2.5 @3xl:h-3.5 @3xl:w-3.5" /> {p.location}
               </p>
+            )}
+            {p.website && (
+              <a
+                href={p.website}
+                target="_blank"
+                rel="nofollow ugc noopener noreferrer"
+                className="mt-0.5 flex min-w-0 items-center gap-1 text-[0.58rem] font-medium text-teal-deep hover:underline @3xl:text-sm"
+              >
+                <Globe className="h-2.5 w-2.5 shrink-0 @3xl:h-3.5 @3xl:w-3.5" /> <span className="truncate">{siteLabel(p.website)}</span>
+              </a>
             )}
           </div>
         </div>
