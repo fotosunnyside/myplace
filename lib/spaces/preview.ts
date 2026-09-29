@@ -1,6 +1,7 @@
 import { HOSTED_SPACES } from '@/lib/config'
 import { canHostSpaces } from '@/lib/store/actions'
 import { getState } from '@/lib/store/store'
+import { previewGuest } from './guest'
 import { STALE_AFTER_MS, type SpacesBackend } from './backend'
 import { slugFor, validateNewSpace } from './rooms'
 import { SPACE_MESSAGES, SpaceError, type SpacePresence, type VirtualSpace } from './types'
@@ -50,6 +51,7 @@ export const PREVIEW_SPACES: VirtualSpace[] = [
     id: '00000000-0000-4000-8000-000000000002',
     name: 'Accountability Department',
     slug: 'accountability-room',
+    visibility: 'public', // open to guests
     description: 'Bring something you need to finish. Camera on. Work quietly alongside other people and get it done.',
     roomType: 'accountability',
     maxParticipants: 20,
@@ -134,6 +136,7 @@ export const previewBackend: SpacesBackend = {
     const space = need(spaceId)
     const id = previewBackend.identity()
     if (!id) throw new SpaceError('signin', SPACE_MESSAGES.signin)
+    if (!getState().accountId && space.visibility !== 'public') throw new SpaceError('signin', 'Join PLACES to enter this room.')
     if (!space.isActive) throw new SpaceError('closed', SPACE_MESSAGES.closed)
     const board = read()
     const room = Object.fromEntries(Object.entries(board[spaceId] ?? {}).filter(([, p]) => fresh(p)))
@@ -162,7 +165,7 @@ export const previewBackend: SpacesBackend = {
     write(board)
   },
 
-  identity: () => getState().accountId,
+  identity: () => getState().accountId ?? previewGuest()?.id ?? null,
 
   mediaToken: async () => null,
 

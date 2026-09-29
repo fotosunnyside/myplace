@@ -70,6 +70,7 @@ export type SpacePatch = Partial<
     | 'description'
     | 'maxParticipants'
     | 'isActive'
+    | 'visibility'
     | 'allowCamera'
     | 'allowMicrophone'
     | 'backgroundStyle'

@@ -45,7 +45,8 @@ if (typeof window !== 'undefined') {
 
 const currentIdentity = (): CloudIdentity | null => {
   const s = getBackendSession()
-  return s.status === 'signed-in' ? { id: s.userId, email: s.email } : null
+  // A guest in a room isn't a PLACES member: the world stays as a visitor sees it.
+  return s.status === 'signed-in' && !s.guest ? { id: s.userId, email: s.email } : null
 }
 
 function sessionReady(): Promise<void> {

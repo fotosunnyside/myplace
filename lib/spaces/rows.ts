@@ -84,6 +84,7 @@ const COLUMNS: Record<keyof SpacePatch, keyof SpaceRow> = {
   description: 'description',
   maxParticipants: 'max_participants',
   isActive: 'is_active',
+  visibility: 'visibility',
   allowCamera: 'allow_camera',
   allowMicrophone: 'allow_microphone',
   backgroundStyle: 'background_style',

@@ -154,6 +154,19 @@ jobs:
           fi
           supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           supabase db push --linked --include-all --password "$SUPABASE_DB_PASSWORD" --yes
+      # Guests drop into rooms open to guests with just a name (anonymous sign-ins). Changes only this one auth setting.
+      - name: Allow guests in open rooms
+        continue-on-error: true
+        run: |
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && exit 0
+          status=$(curl -sS -o /tmp/auth.json -w '%{http_code}' -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d '{"external_anonymous_users_enabled": true}')
+          if [ "$status" != "200" ]; then
+            echo "::warning title=Guests not switched on::Supabase answered $status. Turn on Authentication → Sign In / Providers → Allow anonymous sign-ins."
+            exit 1
+          fi
+          echo "Anonymous sign-ins: $(jq -r '.external_anonymous_users_enabled' /tmp/auth.json)"
 
   deploy:
     if: github.event_name != 'pull_request'

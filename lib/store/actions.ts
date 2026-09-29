@@ -107,12 +107,22 @@ export function signIn(s: WorldState, email: string): WorldState {
 
 export const signOut = (s: WorldState): WorldState => ({ ...s, accountId: null })
 
-export type ProfilePatch = Partial<Pick<Account, 'name' | 'avatar' | 'bio' | 'location' | 'headline' | 'interests' | 'skills' | 'openTo'>>
+export type ProfilePatch = Partial<Pick<Account, 'name' | 'avatar' | 'bio' | 'location' | 'headline' | 'website' | 'interests' | 'skills' | 'openTo'>>
+
+/** A website as typed ("mystudio.com") → a full link, or undefined when empty. Mirrors profiles_website_check. */
+export function normalizeWebsite(raw: string | undefined): string | undefined {
+  const v = raw?.trim()
+  if (!v) return undefined
+  const url = /^https?:\/\//i.test(v) ? v : `https://${v}`
+  if (url.length > 200 || !/^https?:\/\/[^\s/$.?#][^\s]*$/i.test(url) || !/\.[a-z]{2,}/i.test(url)) throw new ActionError('That website doesn’t look right — try something like mystudio.com.')
+  return url
+}
 
 export function updateProfile(s: WorldState, patch: ProfilePatch): WorldState {
   const me = need(s)
   if (patch.name !== undefined && !patch.name.trim()) throw new ActionError('Your name cannot be empty.')
-  return { ...s, accounts: s.accounts.map((a) => (a.id === me ? { ...a, ...patch } : a)) }
+  const next = 'website' in patch ? { ...patch, website: normalizeWebsite(patch.website) } : patch
+  return { ...s, accounts: s.accounts.map((a) => (a.id === me ? { ...a, ...next } : a)) }
 }
 
 /** Removes the account and everything it created on this device. */

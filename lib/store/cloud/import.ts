@@ -61,6 +61,7 @@ export function bringDeviceContent(current: WorldState, device: WorldState, who:
     bio: me.bio || local.bio,
     location: me.location || local.location,
     headline: me.headline || local.headline,
+    website: me.website || local.website,
     avatar: me.avatar || local.avatar,
     interests: me.interests.length ? me.interests : local.interests,
     skills: me.skills.length ? me.skills : local.skills,

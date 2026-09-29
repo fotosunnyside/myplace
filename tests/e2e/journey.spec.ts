@@ -305,18 +305,36 @@ test('PLACES Pass: one Pass for posting, publishing and hosting — and the menu
   await visible(page, '+ Post an opportunity').click()
   await page.getByLabel('Title').fill('Studio assistant')
   await page.getByLabel('Description').fill('Help run our studio two mornings a week.')
+  await expect(page.getByLabel('Title')).toHaveValue('Studio assistant')
   await page.getByRole('button', { name: 'Post opportunity · Included with PLACES Pass' }).click()
-  await expect(page).toHaveURL(/opportunity\/\?id=opp_/)
+  await expect(page).toHaveURL(/opportunity\/\?id=opp_/).catch(async (e: Error) => {
+    // Seen failing on CI only: report what the page showed.
+    const seen = await page.evaluate(() => ({
+      toasts: [...document.querySelectorAll('[aria-live] > *')].map((n) => n.textContent),
+      dialogOpen: !!document.querySelector('[role=dialog]'),
+      title: (document.querySelector('[role=dialog] input') as HTMLInputElement | null)?.value,
+      buttons: [...document.querySelectorAll('[role=dialog] button[type=submit]')].map((b) => b.textContent),
+    }))
+    throw new Error(`${e.message}\nPage state: ${JSON.stringify(seen)}`)
+  })
 
   // So is hosting a space of your own.
   await page.goto('myplace/')
-  await page.getByRole('button', { name: 'Host a space' }).click()
+  await page.getByRole('button', { name: 'Make your own room' }).click()
   await page.getByLabel('Room name').fill('Writers Circle')
   await page.getByRole('button', { name: 'Open my room' }).click()
   await expect(page).toHaveURL(/myplace\/space\/\?room=writers-circle-/)
   await page.goto('myplace/')
   await expect(page.getByRole('heading', { name: 'Your spaces' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Writers Circle' })).toBeVisible()
+
+  // A website on the profile.
+  await page.goto('settings/')
+  await page.getByLabel('Website').fill('piapass.studio')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText('Profile saved.')).toBeVisible()
+  await page.goto('yourplace/')
+  await expect(page.getByRole('link', { name: 'piapass.studio' }).first()).toHaveAttribute('href', 'https://piapass.studio')
 
   // Orders (MarketPlace) and Applications (WorkPlace) are separate — and live rooms aren't in the menu.
   if (desktop) {
@@ -378,5 +396,31 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
   // No admin tools without the backend and an admin account.
   await page.goto('admin/spaces/')
   await expect(page.getByText('Admin needs the PLACES backend')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('a guest drops into the Accountability Department with just a name', async ({ page, context }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  await context.grantPermissions(['camera', 'microphone'])
+
+  // The short link to share (e.g. in a Skool community) goes straight to the door: a name, no account.
+  await page.goto('accountability/')
+  await expect(page).toHaveURL(/myplace\/space\/\?room=accountability-room/)
+  await page.getByLabel('Your name').fill('Sky Guest')
+  await page.getByRole('button', { name: 'Drop in' }).click()
+  await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
+  await expect(page.getByTestId('room-count')).toHaveText('1 person here')
+  await expect(page.getByText('You’re here as a guest.')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^You:/ })).toBeVisible()
+
+  // Other rooms are for members: a guest is asked to join.
+  await page.getByRole('button', { name: 'Leave' }).click()
+  await page.goto('myplace/space/?room=town-hall')
+  await expect(page.getByRole('button', { name: 'Join PLACES' }).last()).toBeVisible()
+
+  // "Make your own room" sits under the rooms on YourPlace.
+  await page.goto('yourplace/')
+  await expect(page.getByRole('link', { name: 'Make your own room' })).toBeVisible()
   expect(errors).toEqual([])
 })
