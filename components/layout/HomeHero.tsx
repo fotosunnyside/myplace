@@ -12,11 +12,10 @@ const values = [
 
 function Headline({ className = '' }: { className?: string }) {
   return (
+    // The logo above already says PLACES FOR US, so the tagline leads (the name stays for screen readers and search).
     <h1 className={`font-serif text-navy ${className}`}>
-      <span className="block text-[length:var(--hero-title)] font-semibold leading-[0.9] tracking-[-0.01em]">
-        <span className="whitespace-nowrap">PLACES<span className="ml-[0.2em] text-[0.42em] tracking-[0.06em]">FOR US</span></span>
-      </span>
-      <span className="mt-[0.35em] block text-[length:var(--hero-sub)] leading-[1.08] tracking-[-0.01em]">
+      <span className="sr-only">PLACES FOR US: </span>
+      <span className="block text-[length:var(--hero-sub)] leading-[1.08] tracking-[-0.01em]">
         The internet,
         <br />
         made into a world.
@@ -56,8 +55,7 @@ function Community({ className = '' }: { className?: string }) {
 }
 
 const heroVars = [
-  '[--hero-title:4.2rem] lg:[--hero-title:clamp(2.8rem,4.6vw,5.8rem)]',
-  '[--hero-sub:1.9rem] lg:[--hero-sub:clamp(1.3rem,2.05vw,2.6rem)]',
+  '[--hero-sub:2.4rem] lg:[--hero-sub:clamp(1.9rem,3vw,3.7rem)]',
   '[--hero-value:1rem] lg:[--hero-value:clamp(0.82rem,1.12vw,1.3rem)]',
   '[--hero-note:0.95rem] lg:[--hero-note:clamp(0.78rem,1.02vw,1.15rem)]',
   '[--hero-gap:0.55rem] lg:[--hero-gap:clamp(0.4rem,0.72vw,0.95rem)]',
