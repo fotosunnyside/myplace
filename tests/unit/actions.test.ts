@@ -57,6 +57,12 @@ describe('accounts', () => {
 })
 
 describe('YourPlace', () => {
+  it('posts a video on its own, and still needs something to post', () => {
+    const s = A.createPost(joined(), { body: '', video: 'https://example.com/clip.mp4' }, NOW)
+    expect(s.posts[0]).toMatchObject({ body: '', video: 'https://example.com/clip.mp4' })
+    expect(() => A.createPost(joined(), { body: '  ' }, NOW)).toThrow(/photo or video/)
+  })
+
   it('posts, likes, comments and votes (single choice)', () => {
     let s = A.createPost(joined(), { body: 'Hello', pollOptions: ['A', 'B'] }, NOW)
     const post = s.posts[0]

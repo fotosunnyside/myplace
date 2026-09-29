@@ -281,6 +281,16 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
           <Picture src={post.image} alt="" fill sizes="(min-width: 1024px) 640px, 320px" className="object-cover" />
         </div>
       )}
+      {post.video && (
+        <video
+          src={post.video}
+          controls
+          playsInline
+          preload="metadata"
+          className="mt-2 max-h-[520px] w-full rounded-xl bg-navy @3xl:mt-4 @3xl:rounded-2xl"
+          aria-label={`Video from ${author?.name ?? 'this post'}`}
+        />
+      )}
       {post.poll && !compact && (
         <div className="mt-4 hidden gap-2 @3xl:grid">
           {post.poll.map((o) => {

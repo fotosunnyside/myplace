@@ -44,33 +44,52 @@ async function hash(s: string) {
   return [...new Uint8Array(buf)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+const VIDEO_EXT: Record<string, string> = { mp4: 'mp4', webm: 'webm', quicktime: 'mov' }
+
 async function uploadDataUrl(dataUrl: string, userId: string): Promise<string> {
   const known = uploaded.get(dataUrl)
   if (known) return known
-  const match = /^data:(image\/(jpeg|png|webp|gif));base64,/.exec(dataUrl)
-  if (!match) throw new CloudWriteError('That image format isn’t supported. Use JPEG, PNG or WebP.')
+  // Photos go to `media`; videos (e.g. posted on this device before connecting) to `videos`.
+  const video = /^data:(video\/(mp4|webm|quicktime));base64,/.exec(dataUrl)
+  const match = video ?? /^data:(image\/(jpeg|png|webp|gif));base64,/.exec(dataUrl)
+  if (!match) throw new CloudWriteError(dataUrl.startsWith('data:video/') ? 'That video format isn’t supported. Use MP4, WebM or MOV.' : 'That image format isn’t supported. Use JPEG, PNG or WebP.')
+  const bucket = video ? 'videos' : 'media'
   const blob = await (await fetch(dataUrl)).blob()
-  const ext = match[2] === 'jpeg' ? 'jpg' : match[2]
+  const ext = video ? VIDEO_EXT[match[2]] : match[2] === 'jpeg' ? 'jpg' : match[2]
   const path = `${userId}/${await hash(dataUrl)}.${ext}`
   const sb = await getSupabase()
-  const { error } = await sb.storage.from('media').upload(path, blob, { contentType: match[1], upsert: true, cacheControl: '31536000' })
-  if (error) throw new CloudWriteError('We couldn’t upload that photo. Please try again.')
-  const url = sb.storage.from('media').getPublicUrl(path).data.publicUrl
+  const { error } = await sb.storage.from(bucket).upload(path, blob, { contentType: match[1], upsert: true, cacheControl: '31536000' })
+  if (error) throw new CloudWriteError(video ? 'We couldn’t upload that video. Please try again.' : 'We couldn’t upload that photo. Please try again.')
+  const url = sb.storage.from(bucket).getPublicUrl(path).data.publicUrl
   uploaded.set(dataUrl, url)
   return url
 }
 
 async function withUploads(row: Row, userId: string): Promise<Row> {
   const out: Row = { ...row }
-  for (const [k, v] of Object.entries(row)) if (typeof v === 'string' && v.startsWith('data:image/')) out[k] = await uploadDataUrl(v, userId)
+  for (const [k, v] of Object.entries(row)) if (typeof v === 'string' && (v.startsWith('data:image/') || v.startsWith('data:video/'))) out[k] = await uploadDataUrl(v, userId)
   return out
 }
 
-/** Removes everything in the member's own photo folder (used when deleting an account). */
+/** Removes everything in the member's own photo and video folders (used when deleting an account). */
 export async function removeMyMedia(userId: string) {
   const sb = await getSupabase()
-  const { data } = await sb.storage.from('media').list(userId, { limit: 1000 })
-  if (data?.length) await sb.storage.from('media').remove(data.map((f) => `${userId}/${f.name}`))
+  for (const bucket of ['media', 'videos']) {
+    const { data } = await sb.storage.from(bucket).list(userId, { limit: 1000 })
+    if (data?.length) await sb.storage.from(bucket).remove(data.map((f) => `${userId}/${f.name}`))
+  }
+}
+
+/** Uploads a video straight to the member's own folder and returns its public link. */
+export async function uploadVideo(file: Blob, userId: string): Promise<string> {
+  const type = file.type === 'video/quicktime' ? 'quicktime' : file.type.replace('video/', '')
+  const ext = VIDEO_EXT[type]
+  if (!ext) throw new CloudWriteError('That video format isn’t supported. Use MP4, WebM or MOV.')
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`
+  const sb = await getSupabase()
+  const { error } = await sb.storage.from('videos').upload(path, file, { contentType: file.type, upsert: false, cacheControl: '31536000' })
+  if (error) throw new CloudWriteError(/size|large|exceed/i.test(error.message) ? 'That video is larger than 50 MB.' : 'We couldn’t upload that video. Please try again.')
+  return sb.storage.from('videos').getPublicUrl(path).data.publicUrl
 }
 
 /* ------------------------------------------------------------------ */

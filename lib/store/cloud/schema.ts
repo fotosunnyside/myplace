@@ -25,7 +25,7 @@ export const TABLES = {
   profiles: { pk: ['id'], update: ['name', 'avatar', 'bio', 'location', 'headline', 'website', 'interests', 'skills', 'open_to'], public: true },
   member_plans: { pk: ['user_id', 'kind'], insert: true, update: ['quantity', 'status', 'via', 'since', 'renews_at'], public: true },
   follows: { pk: ['follower_id', 'followee_id'], insert: true, del: true, public: true },
-  posts: { pk: ['id'], insert: true, update: ['body', 'image', 'link', 'location', 'poll', 'audience'], del: true, public: true, limit: { column: 'created_at', rows: 500 } },
+  posts: { pk: ['id'], insert: true, update: ['body', 'image', 'video', 'link', 'location', 'poll', 'audience'], del: true, public: true, limit: { column: 'created_at', rows: 500 } },
   post_likes: { pk: ['post_id', 'user_id'], insert: true, del: true, public: true },
   post_comments: { pk: ['id'], insert: true, del: true, public: true },
   poll_votes: { pk: ['post_id', 'user_id'], insert: true, update: ['option_id'], del: true, public: true },
