@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Briefcase, MapPin, MessageCircle, Store } from 'lucide-react'
 import type { Person } from '@/lib/types'
 import { Avatar, Button, ButtonLink, Card } from '@/components/ui/primitives'
+import { RoomSquares } from '@/components/spaces/RoomSquares'
 import { openThread, toggleFollow } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
 import { enrollmentsOf, followerCount, followingOf, formatCount, isFollowing, shopOf } from '@/lib/store/selectors'
 
-export function ProfileSummary({ p, own, compact = false }: { p: Person; own: boolean; compact?: boolean }) {
+/** `rooms`: show the official PLACES rooms under the panel (your own YourPlace). */
+export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: Person; own: boolean; compact?: boolean; rooms?: boolean }) {
   const world = useWorld()
   const router = useRouter()
   const following = isFollowing(world, p.id)
@@ -112,6 +114,8 @@ export function ProfileSummary({ p, own, compact = false }: { p: Person; own: bo
           )}
         </Card>
       )}
+
+      {rooms && !compact && <RoomSquares />}
     </div>
   )
 }

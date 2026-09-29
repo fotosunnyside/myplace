@@ -9,7 +9,7 @@ import { Picture } from '@/components/ui/Picture'
 import { Avatar, Button, ButtonLink, Card } from '@/components/ui/primitives'
 import { canAccessCourse, enroll, purchaseCourse, toggleLesson } from '@/lib/store/actions'
 import { perform, useHydrated, useNow, useWorld, withAuth } from '@/lib/store/hooks'
-import { count, enrollmentsOf, formatCount, formatPrice, person, timeUntil } from '@/lib/store/selectors'
+import { count, coursePrice, enrollmentsOf, formatCount, formatPrice, person, timeUntil } from '@/lib/store/selectors'
 import { cn } from '@/lib/cn'
 import { NotFoundHere, Shell } from './Shell'
 
@@ -85,7 +85,7 @@ export function CourseDetail() {
           </p>
           <h1 className="mt-2 font-serif text-[clamp(2.2rem,5vw,3.4rem)] leading-[1.02]">{c.title}</h1>
           <p className="mt-1 text-lg text-navy-soft">{c.subtitle}</p>
-          <p className="mt-3 text-2xl font-semibold">{c.price ? formatPrice(c.price) : 'Free'}</p>
+          <p className="mt-3 text-2xl font-semibold">{coursePrice(c)}</p>
           <p className="mt-4 leading-relaxed text-navy-soft">{c.description}</p>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
             <span className="inline-flex items-center gap-1.5">
@@ -110,7 +110,11 @@ export function CourseDetail() {
               </ButtonLink>
             ) : !access ? (
               <Button size="lg" className="flex-1 !text-base" onClick={buy}>
-                <CreditCard className="h-5 w-5" /> {c.stripeLink ? `Buy course · ${formatPrice(c.price!)}` : `Get course · ${formatPrice(c.price!)} (test)`}
+                <CreditCard className="h-5 w-5" /> {c.billing === 'monthly'
+                  ? `${c.stripeLink ? 'Join membership' : 'Join membership (test)'} · ${coursePrice(c)}`
+                  : c.stripeLink
+                    ? `Buy course · ${formatPrice(c.price!)}`
+                    : `Get course · ${formatPrice(c.price!)} (test)`}
               </Button>
             ) : e ? (
               <div className="flex-1">

@@ -30,8 +30,22 @@ export interface Person {
   baseFollowing?: number
   /** A member with a PLACES account (false for PLACES community profiles like the guide). */
   member?: boolean
-  /** Creator plan: lets a person publish courses in MindPlace. */
+  /** Paid plans: Create in MindPlace, Host a Space, PLACES Pass. */
+  plans?: Partial<Record<PlanKind, MemberPlan>>
+  /** @deprecated The old creator plan, kept only so on-device worlds saved before PLACES Pass still read. */
   creatorPlan?: CreatorPlan
+}
+
+export type PlanKind = 'create' | 'host' | 'pass'
+
+export interface MemberPlan {
+  status: 'active' | 'canceled'
+  via: 'stripe' | 'test'
+  since: number
+  /** End of the current paid period. */
+  renewsAt: number
+  /** Create is per published course or membership: how many this plan covers. */
+  quantity: number
 }
 
 export interface Account extends Person {
@@ -106,6 +120,8 @@ export interface Course {
   startsAt?: number
   /** In cents. 0 or missing = free. */
   price?: number
+  /** Paid courses: a one-time enrollment, or a recurring monthly membership. */
+  billing?: 'once' | 'monthly'
   /** Creator's own Stripe Payment Link — learners pay the creator directly. */
   stripeLink?: string
   createdAt?: number
@@ -116,6 +132,8 @@ export interface CoursePurchase {
   courseId: ID
   buyerId: ID
   total: number
+  /** PLACES platform fee in cents (5% without PLACES Pass). */
+  fee?: number
   via: 'stripe' | 'test'
   createdAt: number
 }
@@ -202,7 +220,7 @@ export interface Opportunity {
   description: string
   createdAt: number
   /** How the job-post fee was paid (missing for seeded posts). */
-  paidVia?: 'stripe' | 'test'
+  paidVia?: 'stripe' | 'test' | 'pass'
 }
 
 export interface Application {

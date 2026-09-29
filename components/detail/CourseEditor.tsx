@@ -4,8 +4,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { ImagePicker, Select, TextArea, TextField } from '@/components/ui/fields'
-import { Button, ButtonLink, Card } from '@/components/ui/primitives'
-import { createCourse, hasCreatorPlan, updateCourse, type CourseInput, type LessonInput } from '@/lib/store/actions'
+import { Button, Card } from '@/components/ui/primitives'
+import { courseSlotsLeft, createCourse, hasPass, updateCourse, type CourseInput, type LessonInput } from '@/lib/store/actions'
+import { PlanOptions } from '@/components/pricing/PlanOptions'
+import { COURSE_FEE_LABEL } from '@/lib/config'
 import { perform, useHydrated, useWorld } from '@/lib/store/hooks'
 import { withBase } from '@/lib/base-path'
 import type { Course } from '@/lib/types'
@@ -21,16 +23,12 @@ export function CourseEditor() {
   const course = id ? world.courses.find((c) => c.id === id) : undefined
 
   if (!ready) return <Shell width="max-w-3xl">{null}</Shell>
-  if (!hasCreatorPlan(world))
+  if (!id && courseSlotsLeft(world) < 1)
     return (
-      <Shell width="max-w-3xl" back={{ href: '/teach', label: 'Teach on PLACES' }}>
-        <Card className="p-10 text-center">
-          <p className="font-serif text-3xl">Start your creator plan first</p>
-          <p className="mt-2 text-muted">Publishing courses is part of the creator plan.</p>
-          <ButtonLink href="/teach" className="mt-6">
-            See the plan
-          </ButtonLink>
-        </Card>
+      <Shell width="max-w-4xl" back={{ href: '/teach', label: 'Teach on PLACES' }}>
+        <h1 className="font-serif text-4xl">Create in MindPlace</h1>
+        <p className="mb-6 mt-2 text-navy-soft">Choose how you’d like to publish. You can offer your course free, as a one-time purchase, or as a monthly membership.</p>
+        <PlanOptions context="course" />
       </Shell>
     )
   if (id && (!course || course.expertId !== world.accountId))
@@ -42,10 +40,19 @@ export function CourseEditor() {
   return <EditorForm key={course?.id ?? 'new'} course={course} />
 }
 
+type Billing = 'free' | 'once' | 'monthly'
+/** Free, one-time or recurring. Other intervals (annual, trials, payment plans, bundles) can join this list later. */
+const BILLING: { v: Billing; label: string; hint: string }[] = [
+  { v: 'free', label: 'Free', hint: 'Learners pay nothing' },
+  { v: 'once', label: 'One-time purchase', hint: 'e.g. $49 once' },
+  { v: 'monthly', label: 'Recurring membership', hint: 'e.g. $19/month' },
+]
+
 const blankLesson = (): LessonInput => ({ title: '', minutes: 5, body: '' })
 
 function EditorForm({ course }: { course?: Course }) {
   const router = useRouter()
+  const pass = hasPass(useWorld())
   const [f, setF] = useState({
     title: course?.title ?? '',
     subtitle: course?.subtitle ?? '',
@@ -55,7 +62,8 @@ function EditorForm({ course }: { course?: Course }) {
     stripeLink: course?.stripeLink ?? '',
   })
   const [image, setImage] = useState<string | undefined>(course?.image)
-  const [paid, setPaid] = useState(!!course?.price)
+  const [billing, setBilling] = useState<Billing>(course?.price ? (course.billing === 'monthly' ? 'monthly' : 'once') : 'free')
+  const paid = billing !== 'free'
   const [price, setPrice] = useState(course?.price ? String(course.price / 100) : '')
   const [lessons, setLessons] = useState<LessonInput[]>(course?.lessons.map((l) => ({ ...l })) ?? [blankLesson()])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
@@ -72,6 +80,7 @@ function EditorForm({ course }: { course?: Course }) {
       ...f,
       image: image ?? '',
       price: paid ? Math.round(parseFloat(price.replace(/[^0-9.]/g, '') || '0') * 100) : 0,
+      billing: billing === 'monthly' ? 'monthly' : 'once',
       stripeLink: paid ? f.stripeLink : '',
       lessons,
     }
@@ -102,19 +111,16 @@ function EditorForm({ course }: { course?: Course }) {
         </Card>
 
         <Card className="grid gap-5 p-6">
-          <h2 className="text-lg font-semibold">Price</h2>
-          <div role="radiogroup" aria-label="Price" className="grid grid-cols-2 gap-3">
-            {[
-              { v: false, label: 'Free', hint: 'Anyone can learn' },
-              { v: true, label: 'Paid', hint: 'Learners buy access' },
-            ].map((o) => (
+          <h2 className="text-lg font-semibold">Pricing for learners</h2>
+          <div role="radiogroup" aria-label="Pricing" className="grid gap-3 sm:grid-cols-3">
+            {BILLING.map((o) => (
               <button
-                key={o.label}
+                key={o.v}
                 type="button"
                 role="radio"
-                aria-checked={paid === o.v}
-                onClick={() => setPaid(o.v)}
-                className={cn('rounded-2xl border p-4 text-left transition', paid === o.v ? 'border-teal bg-teal-wash/60' : 'border-line bg-white hover:border-teal/40')}
+                aria-checked={billing === o.v}
+                onClick={() => setBilling(o.v)}
+                className={cn('rounded-2xl border p-4 text-left transition', billing === o.v ? 'border-teal bg-teal-wash/60' : 'border-line bg-white hover:border-teal/40')}
               >
                 <span className="block font-semibold">{o.label}</span>
                 <span className="text-sm text-muted">{o.hint}</span>
@@ -123,7 +129,15 @@ function EditorForm({ course }: { course?: Course }) {
           </div>
           {paid && (
             <>
-              <TextField label="Price (USD)" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="29.00" required />
+              <TextField
+                label={billing === 'monthly' ? 'Monthly price (USD)' : 'Price (USD)'}
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder={billing === 'monthly' ? '19.00' : '49.00'}
+                required
+                hint={pass ? 'With PLACES Pass, PLACES takes 0% of your sales.' : `PLACES keeps a ${COURSE_FEE_LABEL} platform fee on each paid ${billing === 'monthly' ? 'membership payment' : 'enrollment'} — 0% with PLACES Pass. Payment processing fees are separate.`}
+              />
               <TextField
                 label="Stripe Payment Link"
                 type="url"
@@ -132,7 +146,7 @@ function EditorForm({ course }: { course?: Course }) {
                 placeholder="https://buy.stripe.com/…"
                 hint={
                   <>
-                    Create a Payment Link for this course in your Stripe Dashboard and paste it here, so learners pay you directly.
+                    Create a {billing === 'monthly' ? 'recurring (monthly) ' : ''}Payment Link for this course in your Stripe Dashboard and paste it here, so learners pay you directly.
                     {returnUrl ? <> Set its confirmation page to redirect to: <span className="break-all font-mono">{returnUrl}</span></> : ' After saving, you’ll see the confirmation URL to use in Stripe.'} Without a link, purchases are test purchases.
                   </>
                 }

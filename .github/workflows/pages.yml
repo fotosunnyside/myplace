@@ -25,7 +25,9 @@ jobs:
       PAGES_BASE_PATH: /${{ github.event.repository.name }}
       NEXT_PUBLIC_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${{ vars.PLAUSIBLE_DOMAIN }}
-      NEXT_PUBLIC_CREATOR_PLAN_LINK: ${{ vars.CREATOR_PLAN_LINK }}
+      NEXT_PUBLIC_CREATE_PLAN_LINK: ${{ vars.CREATE_PLAN_LINK }}
+      NEXT_PUBLIC_HOST_PLAN_LINK: ${{ vars.HOST_PLAN_LINK }}
+      NEXT_PUBLIC_PASS_LINK: ${{ vars.PASS_LINK }}
       NEXT_PUBLIC_STRIPE_PORTAL_LINK: ${{ vars.STRIPE_PORTAL_LINK }}
       NEXT_PUBLIC_JOB_POST_LINK: ${{ vars.JOB_POST_LINK }}
       NEXT_PUBLIC_AD_WEEK_LINK: ${{ vars.AD_WEEK_LINK }}

@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/primitives'
 import { backendConfigured } from '@/lib/backend/client'
 import { useRoomSession } from '@/lib/spaces/live'
 import { useMe } from '@/lib/store/hooks'
+import { Suspense } from 'react'
+import { HostSpaces } from './HostSpaces'
 import { LiveSpacesSection } from './LiveSpacesSection'
 
 const corner = [
@@ -16,7 +18,7 @@ const corner = [
   { href: '/yourplace', label: 'Saved', note: 'Collections on YourPlace', icon: Bookmark },
 ]
 
-/** MyPlace: your own corner of PLACES, and home of its live Virtual Spaces. */
+/** Virtual Spaces: the official PLACES rooms (free to join), the rooms members host, and your own corner. */
 export function MyPlacePage() {
   const me = useMe()
   const session = useRoomSession()
@@ -25,7 +27,7 @@ export function MyPlacePage() {
   return (
     <Shell width="max-w-6xl">
       <header className="mb-8 md:mb-10">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.32em] text-teal-deep">MyPlace</p>
+        <p className="text-[0.7rem] font-medium uppercase tracking-[0.32em] text-teal-deep">Virtual Spaces</p>
         <h1 className="mt-2 font-serif text-[clamp(2.4rem,6vw,3.6rem)] leading-[1.02]">{me ? `Good to see you, ${me.name.split(' ')[0]}.` : 'Your corner of the world.'}</h1>
         <p className="mt-3 max-w-xl text-lg text-navy-soft">Step into a live room and be somewhere with other people — or pick up where you left off.</p>
       </header>
@@ -51,6 +53,10 @@ export function MyPlacePage() {
       {!backendConfigured && (
         <p className="mt-3 text-center text-xs text-muted">Preview: rooms and presence run on this device until PLACES connects its live backend.</p>
       )}
+
+      <Suspense>
+        <HostSpaces />
+      </Suspense>
 
       <section className="mt-12" aria-labelledby="corner">
         <h2 id="corner" className="mb-4 font-serif text-[1.9rem] leading-tight">Your corner</h2>

@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: 'Terms' }
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of use" updated="September 27, 2026">
+    <LegalPage title="Terms of use" updated="September 29, 2026">
       <p>Welcome to PLACES. By using the site you agree to these terms.</p>
       <h2>Be kind</h2>
       <ul>
@@ -20,25 +20,29 @@ export default function TermsPage() {
       </p>
       <h2>Teaching in MindPlace</h2>
       <p>
-        The creator plan is a monthly subscription that lets you publish courses. You can cancel anytime; while your plan is inactive your courses are
-        hidden from MindPlace, but people who bought them keep access. Creators are responsible for their course content and for delivering what they
-        advertise. Paid courses are sold directly by creators through their own Stripe Payment Links; PLACES takes no commission and is not a party to
-        the sale.
+        Publishing a course or membership takes Create in MindPlace (a monthly subscription per published course or membership) or PLACES Pass. You
+        can cancel anytime; while no plan covers your courses they are hidden from MindPlace, but people who bought them keep access. Creators are
+        responsible for their course content and for delivering what they advertise. Paid courses and memberships are sold directly by creators through
+        their own Stripe Payment Links. PLACES charges a 5% platform fee on paid enrollments and membership payments, or 0% for creators with PLACES
+        Pass.
       </p>
       <h2>Opportunities in WorkPlace</h2>
       <p>
-        Posting an opportunity costs a small one-time fee. Posters are responsible for the accuracy and lawfulness of their opportunities. Applying is
+        Posting an opportunity costs a small one-time fee, or is included with PLACES Pass. Posters are responsible for the accuracy and lawfulness of their opportunities. Applying is
         always free — never pay to apply for a job, and report anything suspicious. Contracts and payments are between the employer and the person
         hired.
       </p>
       <h2>Fees</h2>
       <p>
-        PLACES charges no listing fees. Sales of physical items that are shipped carry a 1% sales admin fee. Current prices for the creator plan, job
-        posts and sponsored banners are shown where you buy them, and may change with notice.
+        Joining and using PLACES is free. PLACES charges no listing fees; local MarketPlace sales are free, and items bought through PLACES and shipped
+        carry a 1% platform fee (PLACES Pass does not change this). Current prices for plans (Create in MindPlace, Host a Space, PLACES Pass), job posts
+        and sponsored placements are shown on the Pricing page and where you buy them, and may change with notice. Payment processing fees are separate
+        from PLACES fees.
       </p>
-      <h2>Sponsored banners</h2>
+      <h2>Sponsored placements</h2>
       <p>
-        Each Place shows at most one sponsored banner at a time, clearly labelled. Ads must be honest, family-friendly and lawful, and link to a real
+        Each Place shows one sponsored placement at a time, clearly labelled (it may also appear once in the YourPlace feed). Sponsored placements are not
+        included in any plan. Ads must be honest, family-friendly and lawful, and link to a real
         business. PLACES may decline or remove ads that break these rules.
       </p>
       <h2>Your content</h2>

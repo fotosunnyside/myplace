@@ -165,11 +165,11 @@ function TopBar({ space, count, phase, quiet, joinedAt }: { space: VirtualSpace;
           <Link
             href="/myplace"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/85 text-navy shadow-soft backdrop-blur-md transition hover:bg-white md:h-11 md:w-auto md:gap-1 md:px-4 md:pr-5 md:text-sm md:font-medium"
-            aria-label={inside ? 'MyPlace (you’ll stay in the room)' : 'Back to MyPlace'}
+            aria-label={inside ? 'Spaces (you’ll stay in the room)' : 'Back to Spaces'}
           >
             <span className="flex items-center gap-1">
               <ChevronLeft className="h-5 w-5" />
-              <span className="hidden md:inline">MyPlace</span>
+              <span className="hidden md:inline">Spaces</span>
             </span>
           </Link>
           <div className="min-w-0 rounded-full bg-navy/35 py-1.5 pl-4 pr-3 shadow-soft ring-1 ring-white/15 backdrop-blur-md">
@@ -404,7 +404,7 @@ function StateCard({ title, body, actions, busy, icon, tone }: { title: string; 
 function BackToMyPlace() {
   return (
     <Link href="/myplace" className="inline-flex h-10 items-center rounded-full border border-line bg-white/70 px-5 text-sm font-medium text-navy hover:bg-white">
-      Back to MyPlace
+      Back to Spaces
     </Link>
   )
 }

@@ -3,6 +3,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, getSupabase } from '@/lib/backend/clie
 import { getBackendSession } from '@/lib/backend/auth'
 import type { MediaToken, SpacesBackend } from './backend'
 import { patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type PresenceRow, type SpaceRow } from './rows'
+import { slugFor } from './rooms'
 import { SPACE_MESSAGES, SpaceError, type SpacePatch } from './types'
 
 export const BACKGROUND_BUCKET = 'virtual-space-backgrounds'
@@ -134,6 +135,35 @@ export const cloudBackend: SpacesBackend = {
       throw new SpaceError('network', 'We couldn’t connect live video right now.')
     }
     return data
+  },
+
+  async createSpace(input) {
+    const row = await call<SpaceRow>((sb) =>
+      sb
+        .from('virtual_spaces')
+        .insert({
+          name: input.name.trim(),
+          slug: slugFor(input.name),
+          description: input.description.trim(),
+          room_type: input.roomType,
+          visibility: 'members',
+          max_participants: input.maxParticipants,
+          allow_camera: true,
+          allow_microphone: true,
+          settings: {},
+        })
+        .select('*')
+        .single(),
+    ).catch((e: SpaceError) => {
+      if (e.code === 'forbidden') throw new SpaceError('forbidden', 'Host a Space or PLACES Pass lets you open your own rooms (up to 5).')
+      throw e
+    })
+    return spaceFromRow(row)
+  },
+
+  async deleteSpace(id) {
+    const rows = await call<SpaceRow[]>((sb) => sb.from('virtual_spaces').delete().eq('id', id).select('id'))
+    if (!rows.length) throw new SpaceError('forbidden', 'You can only remove rooms you host.')
   },
 
   async updateSpace(id, patch: SpacePatch) {

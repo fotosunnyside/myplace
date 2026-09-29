@@ -168,27 +168,63 @@ describe('creators', () => {
     ...over,
   })
 
-  it('requires an active creator plan to publish', () => {
+  it('publishes with Create ($7 per course) or PLACES Pass', () => {
     let s = joined()
-    expect(() => A.createCourse(s, course(), NOW)).toThrow(/creator plan/)
-    s = A.subscribeCreator(s, 'test', NOW)
+    expect(() => A.createCourse(s, course(), NOW)).toThrow(/Create in MindPlace or PLACES Pass/)
+    s = A.startPlan(s, 'create', 'test', NOW)
     expect(A.hasCreatorPlan(s)).toBe(true)
+    expect(A.courseSlotsLeft(s)).toBe(1)
     const r = A.createCourse(s, course(), NOW)
     expect(r.state.courses[0]).toMatchObject({ title: 'Watercolor Basics', expertId: me(s), subtitle: 'Free course' })
     expect(A.isListed(r.state, r.id)).toBe(true)
-    const paused = A.cancelCreator(r.state)
+    // Create is per course: a second one needs another Create (or the Pass).
+    expect(() => A.createCourse(r.state, course({ title: 'Second course' }), NOW)).toThrow(/Add another course/)
+    let more = A.startPlan(r.state, 'create', 'test', NOW)
+    expect(A.activePlan(more, 'create')?.quantity).toBe(2)
+    more = A.createCourse(more, course({ title: 'Second course' }), NOW).state
+    const paused = A.cancelPlan(r.state, 'create')
     expect(A.isListed(paused, r.id)).toBe(false)
+    const withPass = A.startPlan(paused, 'pass', 'test', NOW)
+    expect(A.isListed(withPass, r.id)).toBe(true)
+    expect(A.courseSlotsLeft(withPass)).toBe(Infinity)
+  })
+
+  it('reads an old on-device creator plan as Create', () => {
+    const s = joined()
+    const legacy = { ...s, accounts: s.accounts.map((a) => ({ ...a, creatorPlan: { status: 'active' as const, via: 'test' as const, since: NOW, renewsAt: NOW + 1 } })) }
+    expect(A.hasCreatorPlan(legacy)).toBe(true)
+    expect(A.courseSlotsLeft(legacy)).toBe(1)
+    expect(A.hasCreatorPlan(A.cancelPlan(legacy, 'create'))).toBe(false)
+  })
+
+  it('offers one-time and monthly pricing, with a 5% PLACES fee unless the creator has the Pass', () => {
+    let s = A.startPlan(joined(), 'create', 'test', NOW)
+    s = A.startPlan(s, 'create', 'test', NOW)
+    const once = A.createCourse(s, course({ price: 10000 }), NOW)
+    const monthly = A.createCourse(once.state, course({ title: 'Studio membership', price: 2000, billing: 'monthly' }), NOW)
+    expect(monthly.state.courses[0]).toMatchObject({ price: 2000, billing: 'monthly' })
+    expect(monthly.state.courses[1].billing).toBeUndefined()
+    const creator = me(s)
+    let buyer = A.signUp(A.signOut(monthly.state), { name: 'Learner', username: 'learner', email: 'l@example.com' }, NOW)
+    buyer = A.purchaseCourse(buyer, once.id, 'test', NOW)
+    expect(buyer.coursePurchases[0]).toMatchObject({ total: 10000, fee: 500 }) // $100 → $5
+    buyer = A.purchaseCourse(buyer, monthly.id, 'test', NOW)
+    expect(buyer.coursePurchases[0]).toMatchObject({ total: 2000, fee: 100 }) // $20/month → $1/month
+    // With the Pass, PLACES takes 0%.
+    const passCreator = { ...buyer, accounts: buyer.accounts.map((a) => (a.id === creator ? { ...a, plans: { pass: { status: 'active' as const, via: 'test' as const, since: NOW, renewsAt: NOW + 1, quantity: 1 } } } : a)) }
+    expect(A.courseFee(passCreator, creator, 10000)).toBe(0)
+    expect(A.courseFee(buyer, creator, 0)).toBe(0)
   })
 
   it('validates lessons, prices and Stripe links', () => {
-    const s = A.subscribeCreator(joined(), 'test', NOW)
+    const s = A.startPlan(joined(), 'create', 'test', NOW)
     expect(() => A.createCourse(s, course({ lessons: [{ title: 'Only a title', minutes: 5, body: '' }] }), NOW)).toThrow(/title and some content/)
     expect(() => A.createCourse(s, course({ price: 50 }), NOW)).toThrow(/at least \$1/)
     expect(() => A.createCourse(s, course({ price: 2900, stripeLink: 'https://example.com' }), NOW)).toThrow(/Stripe/)
   })
 
   it('locks paid courses until purchased, then enrolls the buyer', () => {
-    let s = A.subscribeCreator(joined(), 'test', NOW)
+    let s = A.startPlan(joined(), 'create', 'test', NOW)
     const r = A.createCourse(s, course({ price: 2900 }), NOW)
     s = A.signOut(r.state)
     s = A.signUp(s, { name: 'Learner', username: 'learner', email: 'l@example.com' }, NOW)
@@ -201,7 +237,7 @@ describe('creators', () => {
   })
 
   it('only lets authors edit or delete their courses', () => {
-    let s = A.subscribeCreator(joined(), 'test', NOW)
+    let s = A.startPlan(joined(), 'create', 'test', NOW)
     const r = A.createCourse(s, course(), NOW)
     s = A.updateCourse(r.state, r.id, course({ title: 'Watercolor for Everyone' }))
     expect(s.courses[0].title).toBe('Watercolor for Everyone')
@@ -211,7 +247,7 @@ describe('creators', () => {
 })
 
 describe('ecosystem: fees, job posts, ads, hiring & workrooms', () => {
-  it('charges a 1% admin fee on shipped items only', () => {
+  it('charges a 1% platform fee on shipped items only — even with the Pass', () => {
     let s = A.createShop(joined(), { name: 'Studio', category: 'Art', description: '', image: '/x.webp' }, NOW).state
     s = A.createProduct(s, { title: 'Vase', description: '', price: 5000, image: '/x.webp', category: 'Handmade', ships: true }, NOW).state
     const vase = s.products[0]
@@ -220,6 +256,9 @@ describe('ecosystem: fees, job posts, ads, hiring & workrooms', () => {
     expect(s.orders[0].fee).toBe(50)
     s = A.placeOrder(s, s.products[0].id, 'test', NOW)
     expect(s.orders[0].fee).toBeUndefined()
+    s = A.startPlan(s, 'pass', 'test', NOW)
+    s = A.placeOrder(s, vase.id, 'test', NOW)
+    expect(s.orders[0].fee).toBe(50)
   })
 
   it('records how the job-post fee was paid and validates before payment', () => {
@@ -227,6 +266,17 @@ describe('ecosystem: fees, job posts, ads, hiring & workrooms', () => {
     expect(() => A.checkOpportunity({ ...input, description: 'short' })).toThrow(/sentence/)
     const r = A.createOpportunity(joined(), input, NOW, 'stripe')
     expect(r.state.opportunities[0].paidVia).toBe('stripe')
+    // Posting is included with PLACES Pass — and only with it.
+    expect(() => A.createOpportunity(joined(), input, NOW, 'pass')).toThrow(/PLACES Pass/)
+    const withPass = A.createOpportunity(A.startPlan(joined(), 'pass', 'test', NOW), input, NOW, 'pass')
+    expect(withPass.state.opportunities[0].paidVia).toBe('pass')
+  })
+
+  it('lets hosts (Host a Space or the Pass) open their own spaces', () => {
+    expect(A.canHostSpaces(joined())).toBe(false)
+    expect(A.canHostSpaces(A.startPlan(joined(), 'host', 'test', NOW))).toBe(true)
+    expect(A.canHostSpaces(A.startPlan(joined(), 'pass', 'test', NOW))).toBe(true)
+    expect(A.canHostSpaces(A.startPlan(joined(), 'create', 'test', NOW))).toBe(false)
   })
 
   it('queues ads so each Place shows one at a time', () => {

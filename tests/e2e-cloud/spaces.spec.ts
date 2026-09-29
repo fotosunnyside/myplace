@@ -61,7 +61,7 @@ test('admins change rooms without code; people see it live and the database enfo
   await ada.getByRole('menuitem', { name: 'Admin' }).click()
   await ada.getByRole('link', { name: /Virtual Spaces/ }).click()
   await expect(ada.getByRole('heading', { name: 'Town Hall' })).toBeVisible()
-  await expect(ada.getByRole('heading', { name: 'Accountability Room' })).toBeVisible()
+  await expect(ada.getByRole('heading', { name: 'Accountability Department' })).toBeVisible()
   await ada.getByRole('link', { name: 'Edit Town Hall' }).click()
 
   await ada.getByLabel('Room name').fill('Town Square')
@@ -78,8 +78,8 @@ test('admins change rooms without code; people see it live and the database enfo
   expect(saved.background_path).toMatch(new RegExp(`^${saved.id}/`))
   expect((await fetch(saved.background_url)).status).toBe(200)
 
-  // The member's YourPlace picks up the new name, and they walk in.
-  await milo.goto('yourplace/')
+  // The member's Spaces page picks up the new name, and they walk in.
+  await milo.goto('myplace/')
   await expect(milo.getByRole('heading', { name: 'Town Square' })).toBeVisible()
   await milo.getByRole('button', { name: 'Enter Town Square' }).click()
   await expect(milo.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
@@ -106,6 +106,8 @@ test('admins change rooms without code; people see it live and the database enfo
   await expect(ada.getByText('Town Square saved — it’s live now.').last()).toBeVisible()
   await expect(milo.getByText('This room is currently closed.')).toBeVisible({ timeout: 20_000 })
   await milo.goto('yourplace/')
+  await expect(milo.getByRole('button', { name: 'Town Square is closed' })).toBeDisabled()
+  await milo.goto('myplace/')
   await expect(milo.getByText('Closed', { exact: true }).first()).toBeVisible()
   await expect(milo.getByText('Closed for now').first()).toBeVisible()
 
@@ -119,9 +121,9 @@ test('admins change rooms without code; people see it live and the database enfo
   expect(reset).toMatchObject({ is_active: true, max_participants: 20, background_style: 'default', background_url: null })
   await expect.poll(async () => (await fetch(saved.background_url)).status).not.toBe(200)
 
-  // And Milo can walk back in.
+  // And Milo can walk back in, straight from the square on YourPlace.
   await milo.goto('yourplace/')
-  await milo.getByRole('button', { name: 'Enter Town Square' }).click()
+  await milo.getByRole('button', { name: 'Go to Town Square' }).click()
   await expect(milo.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
   await milo.getByRole('button', { name: 'Leave' }).click()
   await expect(milo).toHaveURL(/\/myplace\/$/)
@@ -134,8 +136,8 @@ test('a room keeps you while you look around PLACES', async ({ browser }) => {
   await page.goto('myplace/space/?room=accountability-room')
   await page.getByRole('button', { name: 'Start Working' }).click()
   await expect(page.getByText('Bring something you need to finish.')).toBeVisible()
-  await page.getByRole('link', { name: 'MindPlace' }).click()
-  await expect(page.getByRole('region', { name: /You're in Accountability Room/ })).toBeVisible()
-  await page.getByRole('link', { name: 'Return to Accountability Room' }).click()
+  await page.getByRole('link', { name: 'MindPlace' }).last().click() // the room's own way around PLACES
+  await expect(page.getByRole('region', { name: /You're in Accountability Department/ })).toBeVisible()
+  await page.getByRole('link', { name: 'Return to Accountability Department' }).click()
   await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
 })

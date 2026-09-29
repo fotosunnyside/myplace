@@ -26,7 +26,7 @@ import { Avatar, Card, Tag } from '@/components/ui/primitives'
 import { Picture } from '@/components/ui/Picture'
 import { addComment, deletePost, isSaved, toggleLike, toggleSave, toggleUpvote, votePoll } from '@/lib/store/actions'
 import { perform, useNow, useWorld, withAuth } from '@/lib/store/hooks'
-import { count, formatCount, formatPrice, person, timeAgo, timeUntil } from '@/lib/store/selectors'
+import { count, coursePrice, formatCount, formatPrice, person, timeAgo, timeUntil } from '@/lib/store/selectors'
 import { cn } from '@/lib/cn'
 
 export function TimeAgo({ ts, className }: { ts: number; className?: string }) {
@@ -78,7 +78,7 @@ export function LearningCard({ course }: { course: Course }) {
         <div className="relative h-11 w-7 shrink-0 overflow-hidden rounded-md @3xl:h-40 @3xl:w-full @3xl:rounded-none">
           <Picture src={course.image} alt="" fill sizes="(min-width: 1024px) 300px, 80px" className="object-cover transition duration-700 ease-gentle group-hover:scale-105" />
           <span className="absolute right-2 top-2 hidden rounded-full bg-white/90 px-2 py-0.5 text-[0.68rem] font-semibold text-navy shadow-soft @3xl:inline">
-            {course.price ? formatPrice(course.price) : 'Free'}
+            {coursePrice(course)}
           </span>
           {course.kind === 'live' && (
             <span className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-coral px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-white @3xl:inline-flex">

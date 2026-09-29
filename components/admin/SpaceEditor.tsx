@@ -204,7 +204,7 @@ function SpaceEditor({ space }: { space: VirtualSpace }) {
             ]}
             onChange={(v) => set({ isActive: v === 'live' })}
           />
-          {!draft.isActive && space.isActive && <p className="text-sm text-navy-soft">Closing sends everyone inside back to MyPlace{inside ? ` (${inside} now)` : ''}, and the room shows as closed.</p>}
+          {!draft.isActive && space.isActive && <p className="text-sm text-navy-soft">Closing sends everyone inside back to Spaces{inside ? ` (${inside} now)` : ''}, and the room shows as closed.</p>}
           <Switch label="Allow cameras" on={draft.allowCamera} onChange={(v) => set({ allowCamera: v })} />
           <Switch label="Allow microphones" on={draft.allowMicrophone} onChange={(v) => set({ allowMicrophone: v })} />
         </Section>

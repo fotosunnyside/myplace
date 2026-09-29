@@ -1,4 +1,4 @@
-import type { SpacePatch, SpacePresence, VirtualSpace } from './types'
+import type { NewSpace, SpacePatch, SpacePresence, VirtualSpace } from './types'
 
 /**
  * Everything Virtual Spaces needs from a backend. The UI and room session only talk to this,
@@ -32,6 +32,10 @@ export interface SpacesBackend {
   mediaToken(spaceId: string): Promise<MediaToken | null>
 
   /* Management — every call is authorized by the backend itself */
+  /** A member with Host a Space (or PLACES Pass) opens their own room. */
+  createSpace(input: NewSpace): Promise<VirtualSpace>
+  /** Removes a room you host (admins: any non-official room). */
+  deleteSpace(id: string): Promise<void>
   updateSpace(id: string, patch: SpacePatch): Promise<VirtualSpace>
   uploadBackground(spaceId: string, file: Blob): Promise<{ url: string; path: string }>
   removeBackgroundObject(path: string): Promise<void>

@@ -3,7 +3,7 @@ import type { SpacesBackend } from '@/lib/spaces/backend'
 import { layoutBubbles } from '@/lib/spaces/layout'
 import { MediaDeviceError, type MediaParticipant, type MediaProvider } from '@/lib/spaces/media/types'
 import { PREVIEW_SPACES } from '@/lib/spaces/preview'
-import { featuredSpaces, peopleHere, roomBackground, roomBehaviour, validatePatch, checkBackgroundFile } from '@/lib/spaces/rooms'
+import { featuredSpaces, hostedBy, peopleHere, roomBackground, roomBehaviour, slugFor, validateNewSpace, validatePatch, checkBackgroundFile } from '@/lib/spaces/rooms'
 import { patchToRow, spaceErrorCode, spaceFromRow, type SpaceRow } from '@/lib/spaces/rows'
 import { RoomSession } from '@/lib/spaces/session'
 import { SpaceError, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
@@ -207,6 +207,10 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
       room.delete('me')
     },
     mediaToken: async () => null,
+    createSpace: async () => {
+      throw new SpaceError('forbidden', 'no')
+    },
+    deleteSpace: async () => {},
     updateSpace: async () => townHall,
     uploadBackground: async () => ({ url: '', path: '' }),
     removeBackgroundObject: async () => {},
@@ -341,5 +345,37 @@ describe('room session', () => {
     await s.leave()
     expect(state.left).toBe(1)
     expect(s.get().phase).toBe('idle')
+  })
+})
+
+describe('rooms members host', () => {
+  const hosted: VirtualSpace = { ...townHall, id: 'h1', name: 'Writers', slug: 'writers-abc123', isOfficial: false, createdBy: 'u1', sortOrder: 100 }
+
+  it('lists a host’s own rooms, never the official ones', () => {
+    expect(hostedBy([townHall, accountability, hosted], 'u1').map((s) => s.id)).toEqual(['h1'])
+    expect(hostedBy([townHall, hosted], 'someone-else')).toEqual([])
+    expect(hostedBy([hosted], null)).toEqual([])
+    expect(featuredSpaces([townHall, hosted]).map((s) => s.id)).toEqual([townHall.id])
+  })
+
+  it('gives each new room a readable, unique address the database accepts', () => {
+    const a = slugFor('Sunday Writers’ Circle!')
+    expect(a).toMatch(/^sunday-writers-circle-[a-z0-9]{6}$/)
+    expect(a).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    expect(slugFor('!!!')).toMatch(/^room-[a-z0-9]{6}$/)
+    expect(slugFor('Sunday Writers’ Circle!')).not.toBe(a)
+  })
+
+  it('keeps hosted rooms within the starting limits', () => {
+    const ok = { name: 'Writers', description: '', roomType: 'meeting' as const, maxParticipants: 8 }
+    expect(validateNewSpace(ok, 12)).toBeNull()
+    expect(validateNewSpace({ ...ok, name: '  ' }, 12)).toMatch(/name/)
+    expect(validateNewSpace({ ...ok, maxParticipants: 13 }, 12)).toMatch(/2 to 12/)
+    expect(validateNewSpace({ ...ok, maxParticipants: 1 }, 12)).toMatch(/2 to 12/)
+  })
+
+  it('names the official rooms the way PLACES describes them', () => {
+    expect(accountability.name).toBe('Accountability Department')
+    expect(townHall.description).toMatch(/Meet people/)
   })
 })

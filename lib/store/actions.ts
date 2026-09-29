@@ -10,8 +10,10 @@ import type {
   Contract,
   DistrictId,
   ID,
+  MemberPlan,
   Notification,
   Opportunity,
+  PlanKind,
   Post,
   Product,
   Ref,
@@ -20,6 +22,7 @@ import type {
   WorldState,
   Workroom,
 } from '@/lib/types'
+import { COURSE_FEE_RATE } from '@/lib/config'
 
 export const uid = (prefix = 'id') =>
   `${prefix}_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 12) : Math.random().toString(36).slice(2, 14)}`
@@ -342,7 +345,7 @@ export function replyToDiscussion(s: WorldState, discussionId: ID, body: string,
 /* MarketPlace                                                          */
 /* ------------------------------------------------------------------ */
 
-/** PLACES sales admin fee on shipped (physical) items. No listing fees. */
+/** PLACES platform fee on shipped (physical) items. Local sales and listings are free; PLACES Pass doesn't remove it. */
 export const SALES_FEE_RATE = 0.01
 
 export const STRIPE_LINK_RE = /^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com|donate\.stripe\.com)\//
@@ -415,8 +418,10 @@ export function checkOpportunity(input: OpportunityInput) {
   if (input.description.trim().length < 20) throw new ActionError('Describe the opportunity in at least a sentence or two.')
 }
 
-export function createOpportunity(s: WorldState, input: OpportunityInput, now: number, paidVia: 'stripe' | 'test' = 'test'): { state: WorldState; id: ID } {
+/** `paidVia: 'pass'` — included with PLACES Pass instead of the $2 posting fee. */
+export function createOpportunity(s: WorldState, input: OpportunityInput, now: number, paidVia: 'stripe' | 'test' | 'pass' = 'test'): { state: WorldState; id: ID } {
   const me = need(s)
+  if (paidVia === 'pass' && !hasPass(s, me)) throw new ActionError('Posting is included with PLACES Pass. Start the Pass or pay the posting fee.')
   checkOpportunity(input)
   const id = uid('opp')
   return { state: { ...s, opportunities: [{ ...input, ...kindIcon[input.kind], title: input.title.trim(), id, postedById: me, createdAt: now, paidVia }, ...s.opportunities] }, id }
@@ -486,8 +491,32 @@ export const districtOf = (kind: Ref['kind']): DistrictId =>
 
 const DAY = 86_400_000
 
-export const hasCreatorPlan = (s: WorldState, id: ID | null = s.accountId) =>
-  (s.accounts.find((a) => a.id === id) ?? s.people.find((p) => p.id === id))?.creatorPlan?.status === 'active'
+/** An active plan of this kind. The old creator plan (on-device worlds from before PLACES Pass) counts as Create. */
+export function activePlan(s: WorldState, kind: PlanKind, id: ID | null = s.accountId): MemberPlan | undefined {
+  const p = s.accounts.find((a) => a.id === id) ?? s.people.find((x) => x.id === id)
+  const plan = p?.plans?.[kind]
+  if (plan?.status === 'active') return plan
+  if (kind === 'create' && p?.creatorPlan?.status === 'active') return { ...p.creatorPlan, quantity: Math.max(1, s.courses.filter((c) => c.expertId === id).length) }
+  return undefined
+}
+
+export const hasPass = (s: WorldState, id: ID | null = s.accountId) => !!activePlan(s, 'pass', id)
+
+/** Publishing in MindPlace: with the Pass, or Create (per course or membership). */
+export const hasCreatorPlan = (s: WorldState, id: ID | null = s.accountId) => hasPass(s, id) || !!activePlan(s, 'create', id)
+
+/** Hosting one's own virtual spaces: Host a Space, or the Pass. */
+export const canHostSpaces = (s: WorldState, id: ID | null = s.accountId) => hasPass(s, id) || !!activePlan(s, 'host', id)
+
+/** How many more courses or memberships someone may publish (mirrors public.course_slots()). */
+export function courseSlotsLeft(s: WorldState, id: ID | null = s.accountId) {
+  if (hasPass(s, id)) return Infinity
+  const create = activePlan(s, 'create', id)
+  return Math.max(0, (create?.quantity ?? 0) - s.courses.filter((c) => c.expertId === id).length)
+}
+
+/** The PLACES platform fee on a paid enrollment or membership payment (mirrors public.fill_course_purchase()). */
+export const courseFee = (s: WorldState, expertId: ID, total: number) => (total > 0 && !hasPass(s, expertId) ? Math.round(total * COURSE_FEE_RATE) : 0)
 
 /** Free courses, the author, and buyers can open every lesson. */
 export function canAccessCourse(s: WorldState, courseId: ID, userId: ID | null = s.accountId) {
@@ -498,18 +527,39 @@ export function canAccessCourse(s: WorldState, courseId: ID, userId: ID | null =
   return c.expertId === userId || (s.coursePurchases ?? []).some((p) => p.courseId === courseId && p.buyerId === userId)
 }
 
-export function subscribeCreator(s: WorldState, via: 'stripe' | 'test', now: number): WorldState {
-  const me = need(s)
-  const next = {
-    ...s,
-    accounts: s.accounts.map((a) => (a.id === me ? { ...a, creatorPlan: { status: 'active' as const, via, since: a.creatorPlan?.since ?? now, renewsAt: now + 30 * DAY } } : a)),
-  }
-  return notify(next, me, { text: 'Your creator plan is active. Publish your first course!', href: '/teach', district: 'mindplace' }, now)
+const PLAN_WELCOME: Record<PlanKind, { text: string; href: string; district: DistrictId }> = {
+  pass: { text: 'Your PLACES Pass is active. Create, teach and host across PLACES.', href: '/pricing', district: 'mindplace' },
+  host: { text: 'You can host your own spaces now. Open your first room!', href: '/myplace', district: 'yourplace' },
+  create: { text: 'Create in MindPlace is active. Publish your course or membership!', href: '/teach', district: 'mindplace' },
 }
 
-export function cancelCreator(s: WorldState): WorldState {
+/**
+ * Starts (or renews) a plan. Starting Create again while it's active adds one more course or membership to it —
+ * Create is priced per published course.
+ */
+export function startPlan(s: WorldState, kind: PlanKind, via: 'stripe' | 'test', now: number): WorldState {
   const me = need(s)
-  return { ...s, accounts: s.accounts.map((a) => (a.id === me && a.creatorPlan ? { ...a, creatorPlan: { ...a.creatorPlan, status: 'canceled' as const } } : a)) }
+  const current = activePlan(s, kind, me)
+  const account = s.accounts.find((a) => a.id === me)
+  const stored = account?.plans?.[kind]
+  const quantity = kind === 'create' && current ? Math.min(50, current.quantity + 1) : 1
+  const plan: MemberPlan = { status: 'active', via, since: current?.since ?? stored?.since ?? now, renewsAt: now + 30 * DAY, quantity }
+  const next = { ...s, accounts: s.accounts.map((a) => (a.id === me ? { ...a, plans: { ...a.plans, [kind]: plan } } : a)) }
+  return current && kind !== 'create' ? next : notify(next, me, PLAN_WELCOME[kind], now)
+}
+
+export function cancelPlan(s: WorldState, kind: PlanKind): WorldState {
+  const me = need(s)
+  return {
+    ...s,
+    accounts: s.accounts.map((a) => {
+      if (a.id !== me) return a
+      const plans = a.plans?.[kind] ? { ...a.plans, [kind]: { ...a.plans[kind]!, status: 'canceled' as const } } : a.plans
+      // An old on-device creator plan is Create.
+      const creatorPlan = kind === 'create' && a.creatorPlan ? { ...a.creatorPlan, status: 'canceled' as const } : a.creatorPlan
+      return { ...a, plans, creatorPlan }
+    }),
+  }
 }
 
 export interface LessonInput {
@@ -528,6 +578,8 @@ export interface CourseInput {
   kind: 'course' | 'guide'
   /** Cents; 0 = free. */
   price: number
+  /** Paid: one-time enrollment, or a recurring monthly membership. */
+  billing?: 'once' | 'monthly'
   stripeLink?: string
   lessons: LessonInput[]
 }
@@ -549,7 +601,8 @@ const toLessons = (lessons: LessonInput[]) =>
 
 export function createCourse(s: WorldState, input: CourseInput, now: number): { state: WorldState; id: ID } {
   const me = need(s)
-  if (!hasCreatorPlan(s, me)) throw new ActionError('Start your creator plan to publish courses.')
+  if (courseSlotsLeft(s, me) < 1)
+    throw new ActionError(hasCreatorPlan(s, me) ? 'Add another course to Create in MindPlace, or use PLACES Pass to publish more.' : 'Choose Create in MindPlace or PLACES Pass to publish.')
   const lessons = validateCourse(input)
   const id = uid('crs')
   const course = {
@@ -564,6 +617,7 @@ export function createCourse(s: WorldState, input: CourseInput, now: number): { 
     lessons: toLessons(lessons),
     baseMembers: 0,
     price: input.price || undefined,
+    billing: input.price && input.billing === 'monthly' ? ('monthly' as const) : undefined,
     stripeLink: input.stripeLink?.trim() || undefined,
     createdAt: now,
   }
@@ -589,6 +643,7 @@ export function updateCourse(s: WorldState, courseId: ID, input: CourseInput): W
             topic: input.topic,
             lessons: toLessons(lessons),
             price: input.price || undefined,
+            billing: input.price && input.billing === 'monthly' ? ('monthly' as const) : undefined,
             stripeLink: input.stripeLink?.trim() || undefined,
           }
         : x,
@@ -607,17 +662,19 @@ export function purchaseCourse(s: WorldState, courseId: ID, via: 'stripe' | 'tes
   const c = s.courses.find((x) => x.id === courseId)
   if (!c) throw new ActionError('That course is no longer available.')
   if (canAccessCourse(s, courseId, me)) return enroll(s, courseId, now)
-  let next: WorldState = { ...s, coursePurchases: [{ id: uid('cpu'), courseId, buyerId: me, total: c.price ?? 0, via, createdAt: now }, ...(s.coursePurchases ?? [])] }
+  const total = c.price ?? 0
+  const fee = courseFee(s, c.expertId, total)
+  let next: WorldState = { ...s, coursePurchases: [{ id: uid('cpu'), courseId, buyerId: me, total, fee: fee || undefined, via, createdAt: now }, ...(s.coursePurchases ?? [])] }
   next = enroll(next, courseId, now)
   next = notify(next, me, { text: `You now have ${c.title}. Enjoy!`, href: `/mindplace/course/?id=${c.id}`, district: 'mindplace' }, now)
   return notify(next, c.expertId, { text: `Someone bought your course ${c.title}!`, href: '/teach', district: 'mindplace' }, now)
 }
 
-/** Courses shown in MindPlace: seed courses plus courses from creators with an active plan. */
+/** Courses shown in MindPlace: seed courses plus courses from creators publishing with Create or the Pass. */
 export function isListed(s: WorldState, courseId: ID) {
   const c = s.courses.find((x) => x.id === courseId)
   if (!c) return false
-  // PLACES community courses are always listed; members' courses while their creator plan is active.
+  // PLACES community courses are always listed; members' courses while they publish with Create or the Pass.
   const isMember = s.accounts.some((a) => a.id === c.expertId) || s.people.some((p) => p.id === c.expertId && p.member)
   return !isMember || hasCreatorPlan(s, c.expertId)
 }
@@ -626,7 +683,8 @@ export function isListed(s: WorldState, courseId: ID) {
 /* Ads — one sponsored mini banner per Place                            */
 /* ------------------------------------------------------------------ */
 
-export const AD_DAYS = { week: 7, month: 30 } as const
+/** $10 a week; the longer booking is 4 weeks (public.schedule_ad()). */
+export const AD_DAYS = { week: 7, month: 28 } as const
 
 export interface AdInput {
   business: string

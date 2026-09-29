@@ -139,7 +139,7 @@ function SellerPanel({ productId, stripeLink }: { productId: string; stripeLink?
   return (
     <Card className="mt-7 grid gap-4 p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your listing</p>
-      <p className="text-sm text-muted">No listing fees.{' '}{world.products.find((x) => x.id === productId)?.ships ? 'Shipped sales carry a 1% PLACES admin fee.' : 'Digital items and services carry no PLACES fee.'}</p>
+      <p className="text-sm text-muted">No listing fees.{' '}{world.products.find((x) => x.id === productId)?.ships ? 'Shipped orders placed through PLACES carry a 1% platform fee.' : 'Local, digital and service sales carry no PLACES fee.'}</p>
       <div className="grid gap-1.5">
         <label htmlFor="stripe-link" className="text-sm font-medium">
           Stripe Payment Link

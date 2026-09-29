@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { Folder, FolderPlus, Send, Sparkles, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { PostCard } from '@/components/cards'
 import { Picture } from '@/components/ui/Picture'
 import { FilterPills } from '@/components/ui/FilterPills'
 import { Avatar, Button, Card } from '@/components/ui/primitives'
+import { SponsoredPost } from '@/components/ads/AdSlot'
 import { Composer } from './Composer'
 import { ProfileSummary } from './ProfileSummary'
-import { createCollection, deleteCollection, toggleFollow, toggleInCollection } from '@/lib/store/actions'
-import { perform, useWorld, withAuth } from '@/lib/store/hooks'
+import { activeAd, createCollection, deleteCollection, toggleFollow, toggleInCollection } from '@/lib/store/actions'
+import { perform, useNow, useWorld, withAuth } from '@/lib/store/hooks'
 import { enrollmentsOf, everyone, followingOf, isFollowing, myThreads, person, resolveRef, search, unreadNotifications } from '@/lib/store/selectors'
 import type { Person, Ref, WorldState } from '@/lib/types'
 import { openAuth } from '@/lib/ui'
@@ -21,7 +22,8 @@ const OTHER_TABS = ['Posts', 'Friends'] as const
 type Tab = (typeof OWN_TABS)[number]
 
 /** A person's home in PLACES — yours (editable) or someone else's. */
-export function ProfileView({ p, own, compact = false, preview = false }: { p: Person; own: boolean; compact?: boolean; preview?: boolean }) {
+/** `home`: this is YourPlace itself — the PLACES rooms sit under the profile panel and sponsored posts appear in the feed. */
+export function ProfileView({ p, own, compact = false, preview = false, home = false }: { p: Person; own: boolean; compact?: boolean; preview?: boolean; home?: boolean }) {
   const tabs: readonly Tab[] = own || preview ? OWN_TABS : OTHER_TABS
   const [tab, setTab] = useState<Tab>(tabs[0])
 
@@ -50,9 +52,9 @@ export function ProfileView({ p, own, compact = false, preview = false }: { p: P
       </nav>
 
       <div className="grid grid-cols-[42%_1fr] gap-3 p-4 @3xl:grid-cols-[300px_1fr] @3xl:gap-10 @3xl:px-0 @3xl:py-8">
-        <ProfileSummary p={p} own={own} compact={compact} />
+        <ProfileSummary p={p} own={own} compact={compact} rooms={home} />
         <div className="min-w-0">
-          {tab === 'Profile' && <Feed p={p} own={own || preview} compact={compact} mode="home" />}
+          {tab === 'Profile' && <Feed p={p} own={own || preview} compact={compact} mode="home" sponsored={home} />}
           {tab === 'Posts' && <Feed p={p} own={own} compact={compact} mode="mine" />}
           {tab === 'Friends' && <Friends p={p} own={own} />}
           {tab === 'Collections' && own && <Collections />}
@@ -68,8 +70,13 @@ export function ProfileView({ p, own, compact = false, preview = false }: { p: P
 
 const FILTERS = ['All', 'Following', 'Yours', 'Photos']
 
-function Feed({ p, own, compact, mode }: { p: Person; own: boolean; compact: boolean; mode: 'home' | 'mine' }) {
+/** A sponsored post appears after this many posts in the YourPlace feed, like any social feed. */
+const SPONSORED_AFTER = 3
+
+function Feed({ p, own, compact, mode, sponsored = false }: { p: Person; own: boolean; compact: boolean; mode: 'home' | 'mine'; sponsored?: boolean }) {
   const world = useWorld()
+  const now = useNow()
+  const ad = sponsored && !compact ? activeAd(world, 'yourplace', now) : undefined
   const [filter, setFilter] = useState('All')
   const following = followingOf(world, p.id)
   const visible = world.posts
@@ -94,8 +101,11 @@ function Feed({ p, own, compact, mode }: { p: Person; own: boolean; compact: boo
           className="[&_button]:!h-6 [&_button]:!px-2.5 [&_button]:!text-[0.55rem] @3xl:[&_button]:!h-9 @3xl:[&_button]:!px-5 @3xl:[&_button]:!text-sm"
         />
       )}
-      {visible.map((x) => (
-        <PostCard key={x.id} post={x} compact={compact} />
+      {visible.map((x, i) => (
+        <Fragment key={x.id}>
+          <PostCard post={x} compact={compact} />
+          {ad && i === Math.min(SPONSORED_AFTER, visible.length) - 1 && <SponsoredPost ad={ad} />}
+        </Fragment>
       ))}
       {visible.length === 0 && (
         <p className="rounded-2xl bg-white/60 py-10 text-center text-sm text-muted">

@@ -7,7 +7,7 @@ import { useOccupancy, useSpaces } from '@/lib/spaces/store'
 import { cn } from '@/lib/cn'
 import { SpaceCard } from './SpaceCard'
 
-/** The rooms PLACES keeps open for everyone, on YourPlace and MyPlace. */
+/** The rooms PLACES keeps open for everyone, on the Spaces page. */
 export function LiveSpacesSection({ className, heading = 'Live Spaces', showAll = true }: { className?: string; heading?: string; showAll?: boolean }) {
   const spaces = useSpaces()
   const occupancy = useOccupancy()
@@ -24,7 +24,7 @@ export function LiveSpacesSection({ className, heading = 'Live Spaces', showAll 
         </div>
         {showAll && (
           <Link href="/myplace" className="group inline-flex shrink-0 items-center gap-1 text-sm font-medium text-teal-deep hover:text-teal">
-            In MyPlace <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            All spaces <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         )}
       </div>

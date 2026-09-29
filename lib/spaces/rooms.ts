@@ -1,4 +1,4 @@
-import type { RoomType, SpacePatch, VirtualSpace } from './types'
+import type { NewSpace, RoomType, SpacePatch, VirtualSpace } from './types'
 
 /**
  * Room presentation and behaviour, derived from each room's configuration — never from its slug,
@@ -61,6 +61,15 @@ export function sortSpaces(spaces: VirtualSpace[]) {
 /** Rooms given a place on YourPlace: top-level official rooms (overflow rooms are reached from their first room). */
 export const featuredSpaces = (spaces: VirtualSpace[]) => sortSpaces(spaces).filter((s) => s.isOfficial && !s.parentSpaceId)
 
+/** Rooms a member hosts. */
+export const hostedBy = (spaces: VirtualSpace[], userId: string | null) => (userId ? sortSpaces(spaces).filter((s) => !s.isOfficial && s.createdBy === userId) : [])
+
+/** A readable, unique address for a new room. */
+export function slugFor(name: string) {
+  const base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'room'
+  return `${base}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export const roomHref = (slug: string, enter = false) => `/myplace/space/?room=${encodeURIComponent(slug)}${enter ? '&enter=1' : ''}`
 
 /* ------------------------------------------------------------------ */
@@ -71,6 +80,17 @@ export const CAPACITY_MIN = 2
 export const CAPACITY_MAX = 500
 export const NAME_MAX = 80
 export const DESCRIPTION_MAX = 280
+
+/** Checks a host's new room (mirrors the database's checks and public.hosted_space_limits()). */
+export function validateNewSpace(input: NewSpace, maxParticipants: number): string | null {
+  const name = input.name.trim()
+  if (!name) return 'Give your room a name.'
+  if (name.length > NAME_MAX) return `Keep the name under ${NAME_MAX} characters.`
+  if (input.description.length > DESCRIPTION_MAX) return `Keep the description under ${DESCRIPTION_MAX} characters.`
+  if (!Number.isInteger(input.maxParticipants) || input.maxParticipants < CAPACITY_MIN || input.maxParticipants > maxParticipants)
+    return `Hosted rooms hold ${CAPACITY_MIN} to ${maxParticipants} people for now.`
+  return null
+}
 
 export function validatePatch(patch: SpacePatch): Partial<Record<keyof SpacePatch, string>> {
   const errors: Partial<Record<keyof SpacePatch, string>> = {}

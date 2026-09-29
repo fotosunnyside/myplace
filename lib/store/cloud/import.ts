@@ -1,4 +1,4 @@
-import type { ID, WorldState } from '@/lib/types'
+import type { ID, MemberPlan, PlanKind, WorldState } from '@/lib/types'
 import type { CloudIdentity } from './map'
 
 /**
@@ -36,7 +36,12 @@ export function bringDeviceContent(current: WorldState, device: WorldState, who:
   const shops = !hasShop && localShop && !has(current.shops, localShop.id) ? mark([{ ...localShop, ownerId: who.id }]) : []
   const products = shops.length ? mark(device.products.filter((p) => p.shopId === localShop!.id && !has(current.products, p.id))) : []
 
-  const plan = local.creatorPlan?.status === 'active' && !me.creatorPlan ? local.creatorPlan : me.creatorPlan
+  // Plans started on this device come along (the old creator plan is Create), unless the account already has them.
+  const localPlans: Partial<Record<PlanKind, MemberPlan>> = { ...local.plans }
+  if (local.creatorPlan?.status === 'active' && !localPlans.create)
+    localPlans.create = { ...local.creatorPlan, quantity: Math.max(1, device.courses.filter((c) => c.expertId === from).length) }
+  const plans: Partial<Record<PlanKind, MemberPlan>> = { ...me.plans }
+  for (const [kind, p] of Object.entries(localPlans) as [PlanKind, MemberPlan | undefined][]) if (p?.status === 'active' && plans[kind]?.status !== 'active') plans[kind] = p
   const courses = mark(device.courses.filter((c) => c.expertId === from && !has(current.courses, c.id))).map((c) => ({ ...c, expertId: who.id }))
   const opportunities = mark(device.opportunities.filter((o) => o.postedById === from && !has(current.opportunities, o.id))).map((o) => ({ ...o, postedById: who.id }))
 
@@ -60,7 +65,7 @@ export function bringDeviceContent(current: WorldState, device: WorldState, who:
     interests: me.interests.length ? me.interests : local.interests,
     skills: me.skills.length ? me.skills : local.skills,
     openTo: me.openTo.length ? me.openTo : local.openTo,
-    creatorPlan: plan,
+    plans: Object.keys(plans).length ? plans : me.plans,
   }
   if (Object.entries(profile).some(([k, v]) => JSON.stringify(v) !== JSON.stringify((me as unknown as Record<string, unknown>)[k]))) changed = true
 

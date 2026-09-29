@@ -3,6 +3,7 @@ import { LogoMark } from '@/components/brand/Logo'
 
 const links = [
   { label: 'Explore', href: '/explore' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'Advertise', href: '/advertise' },
   { label: 'Teach', href: '/teach' },
   { label: 'Privacy', href: '/privacy' },
@@ -16,7 +17,7 @@ export function SiteFooter() {
         <p className="flex items-center gap-2">
           <LogoMark className="h-5 w-5" /> PLACES · The Conscious Web
         </p>
-        <nav aria-label="Footer" className="flex gap-6">
+        <nav aria-label="Footer" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-navy">
               {l.label}
