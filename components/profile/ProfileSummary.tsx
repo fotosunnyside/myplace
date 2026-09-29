@@ -8,7 +8,7 @@ import { Avatar, Button, ButtonLink, Card } from '@/components/ui/primitives'
 import { RoomSquares } from '@/components/spaces/RoomSquares'
 import { openThread, toggleFollow } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
-import { enrollmentsOf, followerCount, followingOf, formatCount, isFollowing, shopOf } from '@/lib/store/selectors'
+import { enrollmentsOf, followerCount, followingOf, formatCount, isFollowing, shopsOf } from '@/lib/store/selectors'
 
 /** "https://www.mystudio.com/" → "mystudio.com" */
 const siteLabel = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')
@@ -18,7 +18,7 @@ export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: 
   const world = useWorld()
   const router = useRouter()
   const following = isFollowing(world, p.id)
-  const shop = shopOf(world, p.id)
+  const shops = shopsOf(world, p.id)
   const done = enrollmentsOf(world, p.id).filter((e) => {
     const c = world.courses.find((x) => x.id === e.courseId)
     return c && e.completed.length === c.lessons.length
@@ -102,16 +102,20 @@ export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: 
             <li className="flex items-center gap-2.5">
               <BookOpen className="h-4 w-4 text-teal" /> {done} course{done === 1 ? '' : 's'} completed
             </li>
-            <li className="flex items-center gap-2.5">
-              <Store className="h-4 w-4 text-coral" />
-              {shop ? (
-                <Link href={`/marketplace/shop/?id=${shop.id}`} className="hover:underline">
-                  {shop.name} · {world.products.filter((x) => x.shopId === shop.id).length} listings
-                </Link>
-              ) : (
-                'No shop yet'
-              )}
-            </li>
+            {shops.length ? (
+              shops.map((shop) => (
+                <li key={shop.id} className="flex items-center gap-2.5">
+                  <Store className="h-4 w-4 shrink-0 text-coral" />
+                  <Link href={`/marketplace/shop/?id=${shop.id}`} className="hover:underline">
+                    {shop.name} · {world.products.filter((x) => x.shopId === shop.id).length} listings
+                  </Link>
+                </li>
+              ))
+            ) : (
+              <li className="flex items-center gap-2.5">
+                <Store className="h-4 w-4 text-coral" /> No shop yet
+              </li>
+            )}
             <li className="flex items-center gap-2.5">
               <Briefcase className="h-4 w-4 text-leaf" /> {account?.openTo.length ? `Open to ${account.openTo.join(' & ')}` : p.headline || 'Exploring WorkPlace'}
             </li>

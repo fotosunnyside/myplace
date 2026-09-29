@@ -8,13 +8,13 @@ import { DistrictIcon } from '@/components/districts/DistrictIcon'
 import { Dialog } from '@/components/ui/Dialog'
 import { ImagePicker, Select, TextArea, TextField } from '@/components/ui/fields'
 import { Button } from '@/components/ui/primitives'
-import { DISCUSSION_CATEGORIES, checkOpportunity, createDiscussion, createOpportunity, createPost, createProduct, createShop, hasPass, type OpportunityInput } from '@/lib/store/actions'
+import { DISCUSSION_CATEGORIES, checkOpportunity, createDiscussion, createOpportunity, createPost, createProduct, createShop, hasPass, storefrontLimit, type OpportunityInput } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
-import { formatPrice, shopOf } from '@/lib/store/selectors'
-import { JOB_POST } from '@/lib/config'
+import { formatPrice, shopsOf } from '@/lib/store/selectors'
+import { JOB_POST, STOREFRONTS } from '@/lib/config'
 import { closeCreate, openCreate, toast, useCreate, type CreateKind } from '@/lib/ui'
 import { orderedDistricts } from '@/lib/world/districts'
-import type { Opportunity, Product } from '@/lib/types'
+import type { Opportunity, Product, Shop } from '@/lib/types'
 import { CREATE_PLACE_HREF } from '@/lib/spaces/rooms'
 
 const MENU: Record<string, { label: string; kind: Exclude<CreateKind, 'menu' | null> }> = {
@@ -189,11 +189,33 @@ const SHOP_CATEGORIES = ['Handmade Goods', 'Home & Garden', 'Templates & Tools',
 
 function ProductForm() {
   const world = useWorld()
-  const shop = world.accountId ? shopOf(world, world.accountId) : undefined
-  return shop ? <NewProduct /> : <NewShop />
+  const shops = world.accountId ? shopsOf(world, world.accountId) : []
+  const [opening, setOpening] = useState(false)
+  if (!shops.length || opening) return <NewShop another={shops.length > 0} onDone={() => setOpening(false)} />
+  const more = shops.length < storefrontLimit(world)
+  return (
+    <div className="grid gap-4">
+      <NewProduct shops={shops} />
+      {more ? (
+        <button type="button" onClick={() => setOpening(true)} className="text-sm font-medium text-teal-deep hover:underline">
+          + Open another storefront ({shops.length} of {storefrontLimit(world)})
+        </button>
+      ) : (
+        shops.length === STOREFRONTS.free && (
+          <p className="text-center text-sm text-muted">
+            Want more than one storefront?{' '}
+            <Link href="/pricing" onClick={closeCreate} className="font-medium text-teal-deep hover:underline">
+              PLACES Pass lets you open up to {STOREFRONTS.pass}
+            </Link>
+            .
+          </p>
+        )
+      )}
+    </div>
+  )
 }
 
-function NewShop() {
+function NewShop({ another = false, onDone }: { another?: boolean; onDone?: () => void }) {
   const [name, setName] = useState('')
   const [category, setCategory] = useState(SHOP_CATEGORIES[0])
   const [description, setDescription] = useState('')
@@ -203,23 +225,29 @@ function NewShop() {
       className="grid gap-4"
       onSubmit={(e) => {
         e.preventDefault()
-        perform((s, now) => createShop(s, { name, category, description, image: image ?? '/media/shop-luna.webp' }, now), 'Your shop is open! Now add your first product.')
+        if (perform((s, now) => createShop(s, { name, category, description, image: image ?? '/media/shop-luna.webp' }, now), another ? 'Your new storefront is open!' : 'Your shop is open! Now add your first product.').ok) onDone?.()
       }}
     >
-      <p className="rounded-2xl bg-teal-wash/60 px-4 py-3 text-sm text-teal-deep">First, open your shop. It takes a minute.</p>
+      <p className="rounded-2xl bg-teal-wash/60 px-4 py-3 text-sm text-teal-deep">{another ? 'Open another storefront — its own name, photo and products.' : 'First, open your shop. It takes a minute.'}</p>
       <TextField label="Shop name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={60} />
       <Select label="Category" options={SHOP_CATEGORIES} value={category} onChange={(e) => setCategory(e.target.value)} />
       <TextArea label="About your shop" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} maxLength={400} />
       <ImagePicker label="Storefront photo" value={image} onChange={setImage} />
       <Button type="submit" size="lg" className="w-full !text-base">
-        Open my shop
+        {another ? 'Open this storefront' : 'Open my shop'}
       </Button>
+      {another && (
+        <button type="button" onClick={onDone} className="text-sm font-medium text-muted hover:text-navy">
+          Back to listing a product
+        </button>
+      )}
     </form>
   )
 }
 
-function NewProduct() {
+function NewProduct({ shops }: { shops: Shop[] }) {
   const router = useRouter()
+  const [shopId, setShopId] = useState(shops[0].id)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -233,13 +261,25 @@ function NewProduct() {
       onSubmit={(e) => {
         e.preventDefault()
         const cents = Math.round(parseFloat(price.replace(/[^0-9.]/g, '')) * 100)
-        const r = perform((s, now) => createProduct(s, { title, description, price: cents, category, image: image ?? '', stripeLink, ships }, now), 'Listed in MarketPlace.')
+        const r = perform((s, now) => createProduct(s, { title, description, price: cents, category, image: image ?? '', stripeLink, ships, shopId }, now), 'Listed in MarketPlace.')
         if (r.ok) {
           closeCreate()
           router.push(`/marketplace/product/?id=${r.id}`)
         }
       }}
     >
+      {shops.length > 1 && (
+        <label className="grid gap-1.5 text-sm font-medium text-navy">
+          Storefront
+          <select value={shopId} onChange={(e) => setShopId(e.target.value)} className="h-12 rounded-2xl border border-line bg-white px-4 text-base outline-none focus:border-teal focus:ring-2 focus:ring-teal/30">
+            {shops.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <ImagePicker label="Product photo" value={image} onChange={setImage} />
       <TextField label="Product name" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
       <TextArea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} maxLength={1500} />
