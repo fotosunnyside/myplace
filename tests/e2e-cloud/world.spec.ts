@@ -129,8 +129,18 @@ test('two people share one world: posts, shops, orders, jobs, workrooms and mess
   await rosa.page.getByRole('button', { name: '+ Post an opportunity' }).filter({ visible: true }).first().click()
   await rosa.page.getByLabel('Title').fill(`Glaze assistant ${run}`)
   await rosa.page.getByLabel('Description').fill('Help mix glazes and pack orders two mornings a week.')
+  await expect(rosa.page.getByLabel('Title')).toHaveValue(`Glaze assistant ${run}`)
   await rosa.page.getByRole('button', { name: /Post opportunity · \$2/ }).click()
-  await expect(rosa.page).toHaveURL(/opportunity\/\?id=opp_/)
+  await expect(rosa.page).toHaveURL(/opportunity\/\?id=opp_/).catch(async (e: Error) => {
+    // This step has failed intermittently on CI only; say what the page showed instead of just "wrong URL".
+    const seen = await rosa.page.evaluate(() => ({
+      toasts: [...document.querySelectorAll('[aria-live] > *')].map((n) => n.textContent),
+      dialogOpen: !!document.querySelector('[role=dialog]'),
+      title: (document.querySelector('[role=dialog] input') as HTMLInputElement | null)?.value,
+      saving: document.documentElement.dataset.saving ?? null,
+    }))
+    throw new Error(`${e.message}\nPage state: ${JSON.stringify(seen)}`)
+  })
   const oppUrl = rosa.page.url()
 
   await go(theo.page, oppUrl)
