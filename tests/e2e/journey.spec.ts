@@ -191,13 +191,13 @@ test('an employer can post, hire into a workroom and pay an invoice', async ({ p
   const boss = `boss_${info.project.name}`
   const pro = `pro_${info.project.name}`
 
-  // Employer posts an opportunity (test mode, normally $2)
+  // Employer posts an opportunity (test mode, normally $3)
   await page.goto('workplace/')
   await visible(page, '+ Post an opportunity').click()
   await join(page, 'Bea Boss', boss)
   await page.getByLabel('Title').fill('Logo design')
   await page.getByLabel('Description').fill('A friendly logo for our small studio, with two rounds of changes.')
-  await page.getByRole('button', { name: /Post opportunity · \$2/ }).click()
+  await page.getByRole('button', { name: /Post opportunity · \$3/ }).click()
   await expect(page).toHaveURL(/opportunity\/\?id=opp_/)
   const oppUrl = page.url()
   await page.waitForTimeout(350)

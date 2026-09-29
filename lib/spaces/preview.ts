@@ -4,7 +4,7 @@ import { getState } from '@/lib/store/store'
 import { previewGuest } from './guest'
 import { STALE_AFTER_MS, type SpacesBackend } from './backend'
 import { slugFor, validateNewSpace } from './rooms'
-import { SPACE_MESSAGES, SpaceError, type SpacePresence, type VirtualSpace } from './types'
+import { SPACE_MESSAGES, SpaceError, type RoomMessage, type RoomSignal, type SpacePresence, type VirtualSpace } from './types'
 
 /**
  * On-device preview used until the PLACES backend is connected (e.g. the GitHub Pages build).
@@ -108,6 +108,20 @@ const need = (spaceId: string) => {
   if (!space) throw new SpaceError('missing', SPACE_MESSAGES.missing)
   return space
 }
+/* Chat and introductions between tabs on this device. */
+const CHAT = 'places:spaces:chat'
+const chatChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CHAT) : null
+const chatListeners = new Set<(spaceId: string, m: RoomMessage) => void>()
+chatChannel?.addEventListener('message', (e: MessageEvent<{ spaceId: string; m: RoomMessage }>) => chatListeners.forEach((l) => l(e.data.spaceId, e.data.m)))
+const readChat = (spaceId: string): RoomMessage[] => {
+  try {
+    return (JSON.parse(localStorage.getItem(CHAT) ?? '{}') as Record<string, RoomMessage[]>)[spaceId] ?? []
+  } catch {
+    return []
+  }
+}
+const signalChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('places:spaces:signals') : null
+
 const noAdmin = () => Promise.reject(new SpaceError('forbidden', 'Managing rooms needs the PLACES backend. See README → Virtual Places.'))
 
 export const previewBackend: SpacesBackend = {
@@ -142,7 +156,7 @@ export const previewBackend: SpacesBackend = {
     const room = Object.fromEntries(Object.entries(board[spaceId] ?? {}).filter(([, p]) => fresh(p)))
     if (!room[id] && Object.keys(room).length >= space.maxParticipants) throw new SpaceError('full', SPACE_MESSAGES.full)
     const now = new Date().toISOString()
-    room[id] = { userId: id, displayName: me.name, avatarUrl: me.avatar ?? null, cameraOn: false, micOn: false, zone: null, role: 'participant', joinedAt: room[id]?.joinedAt ?? now, lastSeenAt: now }
+    room[id] = { userId: id, displayName: me.name, avatarUrl: me.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: room[id]?.x ?? null, y: room[id]?.y ?? null, role: 'participant', joinedAt: room[id]?.joinedAt ?? now, lastSeenAt: now }
     write({ ...board, [spaceId]: room })
   },
 
@@ -166,6 +180,52 @@ export const previewBackend: SpacesBackend = {
   },
 
   identity: () => getState().accountId ?? previewGuest()?.id ?? null,
+
+  async move(spaceId, x, y) {
+    const id = previewBackend.identity()
+    const board = read()
+    const mine = id ? board[spaceId]?.[id] : undefined
+    if (!id || !mine) return
+    board[spaceId][id] = { ...mine, x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) }
+    write(board)
+  },
+
+  messages: async (spaceId) => readChat(spaceId),
+
+  onMessage(spaceId, cb) {
+    const l = (room: string, m: RoomMessage) => room === spaceId && cb(m)
+    chatListeners.add(l)
+    return () => chatListeners.delete(l)
+  },
+
+  async sendMessage(spaceId, body) {
+    const id = previewBackend.identity()
+    const mine = id ? read()[spaceId]?.[id] : undefined
+    if (!id || !mine) throw new SpaceError('forbidden', 'Enter the room to chat.')
+    const text = body.trim().slice(0, 500)
+    if (!text) throw new SpaceError('unknown', 'Write a message first.')
+    const m: RoomMessage = { id: crypto.randomUUID(), userId: id, name: mine.displayName, body: text, createdAt: new Date().toISOString() }
+    try {
+      const all = JSON.parse(localStorage.getItem(CHAT) ?? '{}') as Record<string, RoomMessage[]>
+      all[spaceId] = [...(all[spaceId] ?? []), m].slice(-100)
+      localStorage.setItem(CHAT, JSON.stringify(all))
+    } catch {}
+    chatChannel?.postMessage({ spaceId, m })
+    chatListeners.forEach((l) => l(spaceId, m))
+    return m
+  },
+
+  async signal(spaceId, to, kind, payload) {
+    signalChannel?.postMessage({ spaceId, to, from: previewBackend.identity(), kind, payload })
+  },
+
+  onSignal(spaceId, cb) {
+    const l = (e: MessageEvent<{ spaceId: string; to: string; from: string; kind: RoomSignal['kind']; payload: unknown }>) => {
+      if (e.data.spaceId === spaceId && e.data.to === previewBackend.identity()) cb({ from: e.data.from, kind: e.data.kind, payload: e.data.payload })
+    }
+    signalChannel?.addEventListener('message', l)
+    return () => signalChannel?.removeEventListener('message', l)
+  },
 
   mediaToken: async () => null,
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { DoorOpen, Loader2, Mic, MicOff, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Loader2, MessageSquare, Mic, MicOff, Video, VideoOff } from 'lucide-react'
 import type { DeviceState } from '@/lib/spaces/session'
 import { cn } from '@/lib/cn'
 
@@ -47,12 +47,54 @@ function DeviceButton({ device, state, onClick }: { device: 'camera' | 'micropho
   )
 }
 
-/** Three quiet controls: camera, mic, leave. */
-export function RoomControls({ camera, mic, onCamera, onMic, onLeave }: { camera: DeviceState; mic: DeviceState; onCamera: () => void; onMic: () => void; onLeave: () => void }) {
+/** Four quiet controls: mic, camera, chat, leave. */
+export function RoomControls({
+  camera,
+  mic,
+  onCamera,
+  onMic,
+  onLeave,
+  chatOpen = false,
+  unread = 0,
+  onChat,
+}: {
+  camera: DeviceState
+  mic: DeviceState
+  onCamera: () => void
+  onMic: () => void
+  onLeave: () => void
+  chatOpen?: boolean
+  unread?: number
+  onChat?: () => void
+}) {
   return (
     <div role="toolbar" aria-label="Room controls" className="flex items-end gap-5 rounded-full bg-navy/45 px-6 py-3 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.6)] ring-1 ring-white/15 backdrop-blur-xl md:gap-7 md:px-8">
       <DeviceButton device="microphone" state={mic} onClick={onMic} />
       <DeviceButton device="camera" state={camera} onClick={onCamera} />
+      {onChat && (
+        <button
+          type="button"
+          onClick={onChat}
+          aria-pressed={chatOpen}
+          aria-label={unread ? `Chat, ${unread} new` : 'Chat'}
+          className={cn('relative flex flex-col items-center gap-1 text-[0.68rem] font-medium transition', chatOpen ? 'text-white' : 'text-white/85')}
+        >
+          <span
+            className={cn(
+              'grid h-12 w-12 place-items-center rounded-full transition duration-300 ease-gentle active:scale-95 md:h-[52px] md:w-[52px]',
+              chatOpen ? 'bg-white text-navy shadow-[0_10px_24px_-12px_rgb(0_0_0/0.6)]' : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25',
+            )}
+          >
+            <MessageSquare className="h-[22px] w-[22px]" strokeWidth={1.9} />
+          </span>
+          Chat
+          {unread > 0 && (
+            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.62rem] font-semibold text-white ring-2 ring-navy/40" aria-hidden>
+              {unread}
+            </span>
+          )}
+        </button>
+      )}
       <button type="button" onClick={onLeave} className="flex flex-col items-center gap-1 text-[0.68rem] font-medium text-white/90">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-[#e0735b] text-white shadow-[0_10px_24px_-12px_rgb(224_115_91/0.9)] transition duration-300 ease-gentle hover:bg-[#cf6048] active:scale-95 md:h-[52px] md:w-[52px]">
           <DoorOpen className="h-[22px] w-[22px]" strokeWidth={1.9} />
