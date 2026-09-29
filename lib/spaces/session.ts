@@ -414,6 +414,7 @@ export class RoomSession {
           if (attempt === this.attempt) {
             this.set({ phase: 'in-room' })
             this.refreshRoster(true)
+            this.touchAgain = true // a fresh place starts with camera/mic off: report them right away
           }
         } catch (e) {
           if (attempt === this.attempt) this.fail(e)

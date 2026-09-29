@@ -49,6 +49,9 @@ test.afterAll(async () => {
   if (roomId) await service().from('virtual_spaces').delete().eq('id', roomId)
 })
 
+/** Seen failing on CI only: what each person sees in the room. */
+const seen = (page: Page) => page.evaluate(() => [...document.querySelectorAll('[data-testid=room-floor] button')].map((b) => b.getAttribute('aria-label')))
+
 test('two people meet in a Virtual Place: walk, talk, chat and become friends', async ({ browser }) => {
   test.setTimeout(150_000)
   const slug = `together-${run}`
@@ -99,6 +102,12 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   await expect(ada.getByTestId('speech-bubble').filter({ hasText: 'Hi Ada 👋' })).toBeVisible()
 
   // Ben taps Ada: walks back over to talk, then adds her as a friend.
+  await expect(ben.getByRole('button', { name: /^Ada/ }))
+    .toBeVisible({ timeout: 30_000 })
+    .catch(async (e: Error) => {
+      const roster = await service().from('virtual_space_participants').select('display_name, last_seen_at, pos_x, pos_y').eq('space_id', roomId)
+      throw new Error(`${e.message}\nBen sees: ${JSON.stringify(await seen(ben))}\nAda sees: ${JSON.stringify(await seen(ada))}\nRoom: ${JSON.stringify(roster.data)}`)
+    })
   await ben.getByRole('button', { name: /^Ada/ }).click()
   await ben.getByRole('button', { name: /Go talk to Ada/ }).click()
   await expect(ben.getByRole('button', { name: /^Ada/ })).toHaveAttribute('aria-label', /Nearby/, { timeout: 20_000 })
