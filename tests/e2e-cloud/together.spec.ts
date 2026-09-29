@@ -24,9 +24,12 @@ async function makeUser(name: string) {
   return email
 }
 
+const pageErrors: string[] = []
+
 async function signIn(browser: Browser, email: string) {
   const ctx = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 1360, height: 900 } })
   const page = await ctx.newPage()
+  page.on('pageerror', (e) => pageErrors.push(`${email.split('-')[0]}: ${e.message}`))
   await page.goto('./')
   await page.getByRole('button', { name: 'Sign in' }).filter({ visible: true }).first().click()
   await page.getByLabel('Email').fill(email)
@@ -106,7 +109,10 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
     .toBeVisible({ timeout: 30_000 })
     .catch(async (e: Error) => {
       const roster = await service().from('virtual_space_participants').select('display_name, last_seen_at, pos_x, pos_y').eq('space_id', roomId)
-      throw new Error(`${e.message}\nBen sees: ${JSON.stringify(await seen(ben))}\nAda sees: ${JSON.stringify(await seen(ada))}\nRoom: ${JSON.stringify(roster.data)}`)
+      const benPage = `${ben.url()} · ${(await ben.locator('body').innerText()).slice(0, 400).replace(/\s+/g, ' ')}`
+      throw new Error(
+        `${e.message}\nBen sees: ${JSON.stringify(await seen(ben))}\nAda sees: ${JSON.stringify(await seen(ada))}\nRoom: ${JSON.stringify(roster.data)}\nBen's page: ${benPage}\nPage errors: ${JSON.stringify(pageErrors)}`,
+      )
     })
   await ben.getByRole('button', { name: /^Ada/ }).click()
   await ben.getByRole('button', { name: /Go talk to Ada/ }).click()
