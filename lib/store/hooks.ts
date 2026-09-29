@@ -5,7 +5,7 @@ import type { WorldState } from '@/lib/types'
 import { openAuth, toast } from '@/lib/ui'
 import { ActionError } from './actions'
 import { SERVER_NOW } from './seed'
-import { SERVER_STATE, getState, isHydrated, setState, subscribe } from './store'
+import { SERVER_STATE, getState, hydrate, isHydrated, setState, subscribe } from './store'
 import { me } from './selectors'
 
 export const useWorld = (): WorldState => useSyncExternalStore(subscribe, getState, () => SERVER_STATE)
@@ -59,6 +59,8 @@ export function perform(fn: (s: WorldState, now: number) => Result, success?: st
 
 /** Runs `cb` now if signed in, otherwise after the person joins or signs in. */
 export function withAuth(cb: () => void, reason?: string) {
+  // Clicked before the saved session loaded: decide once it has, so members aren't asked to join.
+  if (!isHydrated()) return void hydrate().then(() => withAuth(cb, reason))
   if (getState().accountId) cb()
   else openAuth({ mode: 'join', reason, onDone: cb })
 }
