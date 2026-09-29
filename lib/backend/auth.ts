@@ -68,25 +68,35 @@ export interface CloudProfile {
 }
 
 /** Creates the cloud identity. `confirmEmail` is true when the project requires email confirmation first. */
-export async function backendSignUp(input: { email: string; password: string } & CloudProfile): Promise<{ confirmEmail: boolean }> {
+export async function backendSignUp(
+  input: { email: string; password: string; location?: string; interests?: string[] } & CloudProfile,
+): Promise<{ confirmEmail: boolean; userId: string | null }> {
   if (input.password.length < 8) throw new BackendAuthError('Choose a password of at least 8 characters.')
   const sb = await getSupabase()
   const { data, error } = await sb.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
-    options: { data: { name: input.name.trim(), username: input.username } },
+    options: { data: { name: input.name.trim(), username: input.username, location: input.location?.trim() ?? '', interests: input.interests ?? [] } },
   })
   if (error) throw new BackendAuthError(friendly(error.message))
-  return { confirmEmail: !data.session }
+  return { confirmEmail: !data.session, userId: data.user?.id ?? null }
 }
 
-export async function backendSignIn(email: string, password: string): Promise<CloudProfile & { email: string }> {
+export async function backendSignIn(email: string, password: string): Promise<CloudProfile & { email: string; userId: string }> {
   const sb = await getSupabase()
   const { data, error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
   if (error) throw new BackendAuthError(friendly(error.message))
   const meta = (data.user.user_metadata ?? {}) as Partial<CloudProfile>
   const address = data.user.email ?? email
-  return { email: address, name: meta.name || address.split('@')[0], username: meta.username || '' }
+  return { email: address, name: meta.name || address.split('@')[0], username: meta.username || '', userId: data.user.id }
+}
+
+/** Whether a username is free in the shared world. */
+export async function usernameAvailable(username: string): Promise<boolean> {
+  const sb = await getSupabase()
+  const { data, error } = await sb.rpc('username_available', { p_username: username })
+  if (error) return true // let sign-up itself decide
+  return data === true
 }
 
 export async function backendSignOut() {

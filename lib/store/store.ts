@@ -1,14 +1,21 @@
 import { del, get, set } from 'idb-keyval'
 import type { WorldState } from '@/lib/types'
+import { backendConfigured } from '@/lib/backend/client'
 import { SEED_VERSION, SERVER_NOW, seedWorld } from './seed'
+import { commitToCloud, startCloud } from './cloud/sync'
 
 /**
- * Local-first world store.
+ * The world store: the single place the interface reads and changes PLACES.
  *
- * The whole world lives in memory and is persisted to IndexedDB on this device. It is the
- * single place data is read and written, so connecting a cloud backend later means
- * replacing `hydrate`/`persist` (and the pure actions with API calls) — not the UI.
+ * Two homes for the data, same interface:
+ *  - 'cloud'  — the shared world in Supabase (when the backend is connected). Actions apply instantly on
+ *               screen, their changes are written to the database, and the world refreshes live.
+ *  - 'device' — everything in this browser's IndexedDB (the preview, or before the database is set up).
  */
+
+export type WorldMode = 'device' | 'cloud'
+let mode: WorldMode = 'device'
+export const getWorldMode = () => mode
 
 const KEY = 'places:world'
 const CHANNEL = 'places:world'
@@ -56,9 +63,17 @@ function persist() {
 
 export function setState(next: WorldState) {
   if (next === state) return
+  const prev = state
   state = next
   emit()
-  persist()
+  if (mode === 'cloud') commitToCloud(prev, next)
+  else persist()
+}
+
+/** Replaces the world with what the server says, without writing anything back. */
+export function replaceState(next: WorldState) {
+  state = next
+  emit()
 }
 
 /** Keep people's own content when the seed changes; refresh everything else. */
@@ -101,18 +116,46 @@ async function load() {
   }
 }
 
-export function hydrate() {
-  if (typeof window === 'undefined' || hydrated) return Promise.resolve()
-  hydrating ??= load().then(() => {
+function startDevice() {
+  return load().then(() => {
     hydrated = true
     emit()
     persist()
     channel?.addEventListener('message', async () => {
+      if (mode !== 'device') return
       await load()
       emit()
     })
   })
+}
+
+export function hydrate() {
+  if (typeof window === 'undefined' || hydrated) return Promise.resolve()
+  hydrating ??= (async () => {
+    if (backendConfigured) {
+      const started = await startCloud().catch((e) => {
+        console.warn('PLACES: shared world unavailable, using this device', e)
+        return 'device' as const
+      })
+      if (started === 'cloud') {
+        mode = 'cloud'
+        hydrated = true
+        emit()
+        return
+      }
+    }
+    await startDevice()
+  })()
   return hydrating
+}
+
+/** Reads what's saved on this device without touching the live world (used to bring device content into the cloud). */
+export async function readDeviceWorld(): Promise<WorldState | null> {
+  try {
+    return ((await get(KEY)) as WorldState | undefined) ?? null
+  } catch {
+    return null
+  }
 }
 
 /** Wipes everything on this device and starts fresh. */

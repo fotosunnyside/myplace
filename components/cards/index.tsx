@@ -310,11 +310,17 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
           <button
             onClick={() => withAuth(() => perform((s) => toggleLike(s, post.id)), 'Join PLACES to like posts.')}
             aria-pressed={liked}
+            aria-label={`Like · ${formatCount(count(post.baseLikes, post.likes.length))}`}
             className={cn('inline-flex items-center gap-1.5 hover:text-navy', liked && 'text-coral')}
           >
             <Heart className={cn('h-[18px] w-[18px]', liked && 'fill-coral')} /> {formatCount(count(post.baseLikes, post.likes.length))}
           </button>
-          <button onClick={() => setShowComments((v) => !v)} aria-expanded={showComments} className="inline-flex items-center gap-1.5 hover:text-navy">
+          <button
+            onClick={() => setShowComments((v) => !v)}
+            aria-expanded={showComments}
+            aria-label={`Comments · ${formatCount(count(post.baseComments, post.comments.length))}`}
+            className="inline-flex items-center gap-1.5 hover:text-navy"
+          >
             <MessageCircle className="h-[18px] w-[18px]" /> {formatCount(count(post.baseComments, post.comments.length))}
           </button>
           <SaveButton refItem={{ kind: 'post', refId: post.id }} className="ml-auto text-lg hover:text-navy" />

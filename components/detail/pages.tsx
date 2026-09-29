@@ -13,9 +13,10 @@ import { deleteAccount, markAllNotificationsRead, signOut, updateProfile } from 
 import { leaveRoomAndSignOut } from '@/lib/spaces/signout'
 import { perform, useHydrated, useWorld } from '@/lib/store/hooks'
 import { enrollmentsOf, formatPrice, me, person, personByUsername, search } from '@/lib/store/selectors'
-import { resetDevice } from '@/lib/store/store'
+import { getWorldMode, resetDevice } from '@/lib/store/store'
+import { deleteCloudAccount } from '@/lib/store/account'
 import type { Account } from '@/lib/types'
-import { openAuth } from '@/lib/ui'
+import { openAuth, toast } from '@/lib/ui'
 import { cn } from '@/lib/cn'
 import { NotFoundHere, Shell } from './Shell'
 
@@ -362,6 +363,7 @@ export function SettingsPage() {
 function SettingsForm({ acc }: { acc: Account }) {
   const router = useRouter()
   const world = useWorld()
+  const cloud = getWorldMode() === 'cloud'
   const [f, setF] = useState({ name: acc.name, headline: acc.headline, bio: acc.bio, location: acc.location, skills: acc.skills.join(', ') })
   const [avatar, setAvatar] = useState<string | undefined>(acc.avatar || undefined)
   const [interests, setInterests] = useState(acc.interests)
@@ -434,7 +436,8 @@ function SettingsForm({ acc }: { acc: Account }) {
       <Card className="mt-8 grid gap-4 p-6">
         <h2 className="text-lg font-semibold">Account & data</h2>
         <p className="text-sm text-muted">
-          Signed in as <span className="font-medium text-navy">@{acc.username}</span> ({acc.email}). Your data is stored on this device.
+          Signed in as <span className="font-medium text-navy">@{acc.username}</span> ({acc.email}).{' '}
+          {cloud ? 'Your place is saved in PLACES, so it’s the same on every device.' : 'Your data is stored on this device.'}
         </p>
         <div className="flex flex-wrap gap-3">
           <Button variant="outline" onClick={exportData}>
@@ -453,22 +456,27 @@ function SettingsForm({ acc }: { acc: Account }) {
         </div>
         <div className="mt-2 rounded-2xl border border-coral/30 bg-[#fff6f3] p-4">
           <p className="font-medium text-[#a2412c]">Delete account</p>
-          <p className="mt-1 text-sm text-navy-soft">Permanently removes your profile and everything you created on this device.</p>
+          <p className="mt-1 text-sm text-navy-soft">Permanently removes your profile and everything you created{cloud ? ' in PLACES' : ' on this device'}.</p>
           <div className="mt-3 flex flex-wrap gap-3">
             <Button
               variant="outline"
               className="!border-coral/50 !text-[#a2412c]"
-              onClick={() => {
-                if (confirm('Delete your account and everything you created? This cannot be undone.')) {
-                  void leaveRoomAndSignOut()
-                  perform(deleteAccount, 'Your account was deleted.')
-                  router.push('/')
-                }
+              onClick={async () => {
+                if (!confirm('Delete your account and everything you created? This cannot be undone.')) return
+                if (cloud) {
+                  try {
+                    await deleteCloudAccount()
+                  } catch (e) {
+                    return toast((e as Error).message, 'error')
+                  }
+                } else void leaveRoomAndSignOut()
+                perform(deleteAccount, 'Your account was deleted.')
+                router.push('/')
               }}
             >
               <Trash2 className="h-4 w-4" /> Delete my account
             </Button>
-            <button
+            {!cloud && <button
               onClick={async () => {
                 if (confirm('Reset PLACES on this device? All accounts and content on this device will be removed.')) {
                   await resetDevice()
@@ -478,7 +486,7 @@ function SettingsForm({ acc }: { acc: Account }) {
               className="text-sm text-muted underline"
             >
               Reset this device
-            </button>
+            </button>}
           </div>
         </div>
       </Card>

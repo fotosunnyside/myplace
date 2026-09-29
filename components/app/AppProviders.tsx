@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { hydrate } from '@/lib/store/store'
 import { initBackendAuth } from '@/lib/backend/auth'
 import { RoomPill } from '@/components/spaces/RoomPill'
+import { SavingHint } from './SavingHint'
 import { useToasts } from '@/lib/ui'
 import { cn } from '@/lib/cn'
 import { AuthDialog } from './AuthDialog'
@@ -23,6 +24,7 @@ export function AppProviders() {
       <AuthDialog />
       <CreateDialogs />
       <RoomPill />
+      <SavingHint />
       <Toaster />
     </>
   )

@@ -5,9 +5,10 @@ import { Dialog } from '@/components/ui/Dialog'
 import { ChipPicker, ImagePicker, TextField } from '@/components/ui/fields'
 import { Button } from '@/components/ui/primitives'
 import { backendConfigured } from '@/lib/backend/client'
-import { BackendAuthError, backendSignIn, backendSignUp } from '@/lib/backend/auth'
-import { signIn, signUp } from '@/lib/store/actions'
-import { getState } from '@/lib/store/store'
+import { BackendAuthError, backendSignIn, backendSignUp, usernameAvailable } from '@/lib/backend/auth'
+import { USERNAME_RE, signIn, signUp, updateProfile } from '@/lib/store/actions'
+import { waitForAccount } from '@/lib/store/cloud/sync'
+import { getState, getWorldMode } from '@/lib/store/store'
 import { perform } from '@/lib/store/hooks'
 import { closeAuth, toast, useAuthRequest, type AuthRequest } from '@/lib/ui'
 
@@ -81,6 +82,29 @@ function AuthForm({ req }: { req: AuthRequest }) {
     if (r.ok) done()
   }
 
+  /** The shared world: your account and everything you make live in PLACES' database. */
+  const shared = async () => {
+    if (mode === 'join') {
+      const u = username.trim().toLowerCase()
+      if (!name.trim()) return toast('Please add your name.', 'error')
+      if (!USERNAME_RE.test(u)) return toast('Usernames are 3–20 characters: lowercase letters, numbers and _.', 'error')
+      if (!(await usernameAvailable(u))) return toast('That username is taken.', 'error')
+      const { confirmEmail, userId } = await backendSignUp({ email, password, name, username: u, location, interests })
+      if (confirmEmail || !userId) {
+        closeAuth()
+        return toast('Check your email to confirm your account, then sign in.')
+      }
+      if (!(await waitForAccount(userId))) return toast('Your account was created. Refresh the page to continue.', 'error')
+      if (avatar) perform((s) => updateProfile(s, { avatar }))
+      toast(`Welcome to PLACES, ${name.split(' ')[0]}!`)
+      return done()
+    }
+    const { userId } = await backendSignIn(email, password)
+    if (!(await waitForAccount(userId))) return toast('Signed in, but PLACES is taking a moment. Refresh the page.', 'error')
+    toast('Signed in.')
+    done()
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!backendConfigured) {
@@ -89,7 +113,7 @@ function AuthForm({ req }: { req: AuthRequest }) {
     }
     setBusy(true)
     try {
-      await cloud()
+      await (getWorldMode() === 'cloud' ? shared() : cloud())
     } catch (err) {
       toast(err instanceof BackendAuthError ? err.message : 'We couldn’t reach PLACES. Check your connection and try again.', 'error')
     } finally {

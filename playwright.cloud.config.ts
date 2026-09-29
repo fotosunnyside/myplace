@@ -8,6 +8,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: 'tests/e2e-cloud',
   timeout: 90_000,
+  // Every step round-trips to a real database; allow for it, and keep the stack from being swamped.
+  expect: { timeout: 15_000 },
+  workers: 2,
   reporter: 'list',
   use: {
     ...devices['Desktop Chrome'],

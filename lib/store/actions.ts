@@ -487,7 +487,7 @@ export const districtOf = (kind: Ref['kind']): DistrictId =>
 const DAY = 86_400_000
 
 export const hasCreatorPlan = (s: WorldState, id: ID | null = s.accountId) =>
-  s.accounts.find((a) => a.id === id)?.creatorPlan?.status === 'active'
+  (s.accounts.find((a) => a.id === id) ?? s.people.find((p) => p.id === id))?.creatorPlan?.status === 'active'
 
 /** Free courses, the author, and buyers can open every lesson. */
 export function canAccessCourse(s: WorldState, courseId: ID, userId: ID | null = s.accountId) {
@@ -617,8 +617,9 @@ export function purchaseCourse(s: WorldState, courseId: ID, via: 'stripe' | 'tes
 export function isListed(s: WorldState, courseId: ID) {
   const c = s.courses.find((x) => x.id === courseId)
   if (!c) return false
-  const isAccount = s.accounts.some((a) => a.id === c.expertId)
-  return !isAccount || hasCreatorPlan(s, c.expertId)
+  // PLACES community courses are always listed; members' courses while their creator plan is active.
+  const isMember = s.accounts.some((a) => a.id === c.expertId) || s.people.some((p) => p.id === c.expertId && p.member)
+  return !isMember || hasCreatorPlan(s, c.expertId)
 }
 
 /* ------------------------------------------------------------------ */

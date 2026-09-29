@@ -28,13 +28,15 @@ export interface Person {
   /** Seeded counts for people who exist before this device did. */
   baseFollowers?: number
   baseFollowing?: number
+  /** A member with a PLACES account (false for PLACES community profiles like the guide). */
+  member?: boolean
+  /** Creator plan: lets a person publish courses in MindPlace. */
+  creatorPlan?: CreatorPlan
 }
 
 export interface Account extends Person {
   email: string
   openTo: ('jobs' | 'freelance' | 'collaboration')[]
-  /** Creator plan: lets a person publish courses in MindPlace. */
-  creatorPlan?: CreatorPlan
 }
 
 export interface CreatorPlan {
