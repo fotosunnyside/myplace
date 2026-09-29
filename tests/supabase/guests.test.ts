@@ -50,8 +50,7 @@ describe.skipIf(!enabled)('guests (Supabase)', () => {
   })
 
   it('keeps websites on profiles to real links', async () => {
-    const { data } = await service.from('profiles').select('id').not('user_id', 'is', null).limit(1).single()
-    const id = data!.id as string
+    const id = 'p_josie' // a PLACES community profile from the seed, present on every fresh database
     expect((await service.from('profiles').update({ website: 'javascript:alert(1)' }).eq('id', id)).error).not.toBeNull()
     expect((await service.from('profiles').update({ website: 'https://mystudio.com' }).eq('id', id)).error).toBeNull()
     await service.from('profiles').update({ website: null }).eq('id', id)
