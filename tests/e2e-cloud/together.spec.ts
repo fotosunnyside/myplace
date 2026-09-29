@@ -28,6 +28,14 @@ const pageErrors: string[] = []
 
 async function signIn(browser: Browser, email: string) {
   const ctx = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 1360, height: 900 } })
+  // Current Chrome returns a Promise from scrollIntoView; behave the same whatever browser runs the test.
+  await ctx.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element, ...args: Parameters<Element['scrollIntoView']>) {
+      scroll.apply(this, args)
+      return Promise.resolve() as unknown as void
+    }
+  })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => pageErrors.push(`${email.split('-')[0]}: ${e.message}`))
   await page.goto('./')

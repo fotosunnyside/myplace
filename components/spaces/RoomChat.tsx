@@ -142,7 +142,10 @@ export function ChatModeSwitch({ mode, onMode }: { mode: ChatMode; onMode: (m: C
 /** The chat panel: the room's conversation, newest at the bottom. */
 export function ChatPanel({ messages, me, mode, onMode, onClose }: { messages: RoomMessage[]; me: string | null; mode: ChatMode; onMode: (m: ChatMode) => void; onClose: () => void }) {
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [messages.length])
+  // Braces matter: newer browsers return a Promise from scrollIntoView, which React would take for a cleanup function.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [messages.length])
   return (
     <motion.aside
       initial={{ opacity: 0, x: 24 }}
