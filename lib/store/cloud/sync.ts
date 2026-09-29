@@ -123,34 +123,48 @@ export async function startCloud(): Promise<'cloud' | 'device'> {
   initBackendAuth()
   await sessionReady()
   identity = currentIdentity()
-  const cached = await readCache(identity)
-  const fresh = loadCloud(!!identity).then((data) => {
-    const world = fromCloud(data, identity)
-    writeCache(identity, world)
+  const startedAs = identity
+
+  // Listen for signing in or out from the very start: someone may sign in before the first read finishes.
+  let live = false
+  onBackendSessionChange(() => {
+    const next = currentIdentity()
+    if (next?.id === identity?.id) return
+    identity = next
+    if (!live) return // the first read below notices the change and re-reads as the new person
+    reload()
+      .then(() => next && importOnce(next))
+      .catch((e) => console.warn('PLACES: could not load your world', e))
+  })
+
+  const cached = await readCache(startedAs)
+  const fresh = loadCloud(!!startedAs).then((data) => {
+    const world = fromCloud(data, startedAs)
+    writeCache(startedAs, world)
     return world
   })
   if (cached) {
     // Show the last known world right away; the fresh copy replaces it moments later.
     replaceState(cached)
-    fresh.then((w) => pending === 0 && replaceState(w)).catch((e) => console.warn('PLACES: could not refresh the world', e))
+    fresh.then((w) => pending === 0 && identity?.id === startedAs?.id && replaceState(w)).catch((e) => console.warn('PLACES: could not refresh the world', e))
   } else {
     try {
-      replaceState(await fresh)
+      const w = await fresh
+      if (identity?.id === startedAs?.id) replaceState(w)
     } catch (e) {
       if (e instanceof WorldNotSetUp) return 'device'
       throw e
     }
   }
+  live = true
   watchWorld(() => schedule())
-  onBackendSessionChange(() => {
-    const next = currentIdentity()
-    if (next?.id === identity?.id) return
-    identity = next
+  if (identity?.id !== startedAs?.id) {
+    // Signed in (or out) while the first read was on its way.
+    const who = identity
     reload()
-      .then(() => next && importOnce(next))
+      .then(() => who && importOnce(who))
       .catch((e) => console.warn('PLACES: could not load your world', e))
-  })
-  if (identity) void importOnce(identity)
+  } else if (identity) void importOnce(identity)
   return 'cloud'
 }
 
