@@ -27,7 +27,7 @@ export function AdminGate({ children, title, back }: { children: ReactNode; titl
         <p>
           Room settings are stored in Supabase and protected by its admin rules, so managing them isn’t available in this on-device preview. Connect the backend
           (<code className="rounded bg-ivory px-1.5 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="rounded bg-ivory px-1.5 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>),
-          then make yourself an admin — see README → Virtual Spaces.
+          then make yourself an admin — see README → Virtual Places.
         </p>
       </Notice>
     )

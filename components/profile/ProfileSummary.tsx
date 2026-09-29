@@ -67,7 +67,7 @@ export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: 
         </ButtonLink>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          <Button size="sm" variant={following ? 'outline' : 'primary'} onClick={() => withAuth(() => perform((s) => toggleFollow(s, p.id), following ? `Unfollowed ${p.name}.` : `Following ${p.name}.`), `Join PLACES to follow ${p.name}.`)} className="@3xl:h-11 @3xl:text-sm">
+          <Button size="sm" variant={following ? 'outline' : 'primary'} onClick={() => withAuth(() => perform((s) => toggleFollow(s, p.id), following ? `Unfollowed ${p.name}.` : `Following ${p.name}.`), `Join PLACES FOR US to follow ${p.name}.`)} className="@3xl:h-11 @3xl:text-sm">
             {following ? 'Following' : 'Follow'}
           </Button>
           <Button
@@ -77,7 +77,7 @@ export function ProfileSummary({ p, own, compact = false, rooms = false }: { p: 
               withAuth(() => {
                 const r = perform((s, now) => openThread(s, p.id, undefined, now))
                 if (r.ok) router.push(`/messages/?t=${r.id}`)
-              }, `Join PLACES to message ${p.name}.`)
+              }, `Join PLACES FOR US to message ${p.name}.`)
             }
             className="@3xl:h-11 @3xl:text-sm"
           >

@@ -44,7 +44,7 @@ async function join(page: Page, name: string, username: string) {
   await page.getByLabel('Email').fill(`${username}@places.test`)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Create my place' }).click()
-  await expect(page.getByText(`Welcome to PLACES, ${name.split(' ')[0]}!`)).toBeVisible()
+  await expect(page.getByText(`Welcome to PLACES FOR US, ${name.split(' ')[0]}!`)).toBeVisible()
 }
 
 async function signIn(page: Page, username: string) {

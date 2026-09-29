@@ -17,10 +17,10 @@ export function Greeting() {
   if (!me)
     return (
       <div>
-        <p className="font-serif text-[1.7rem] leading-tight text-navy">Welcome to PLACES</p>
+        <p className="font-serif text-[1.7rem] leading-tight text-navy">Welcome to PLACES FOR US</p>
         <p className="mt-1 font-serif text-[0.95rem] italic text-navy-soft">A global community to live, learn, create and work — together.</p>
         <Button className="mt-4 w-full" size="lg" onClick={() => openAuth({ mode: 'join' })}>
-          Join PLACES — it’s free
+          Join PLACES FOR US — it’s free
         </Button>
       </div>
     )

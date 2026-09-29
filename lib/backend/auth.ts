@@ -126,7 +126,7 @@ export async function backendGuestSignIn(name: string) {
     return
   }
   const { error } = await sb.auth.signInAnonymously({ options: { data: { name: clean } } })
-  if (error) throw new BackendAuthError(/anonymous/i.test(error.message) ? 'Guest visits aren’t switched on yet. Join PLACES to come in — it’s free.' : friendly(error.message))
+  if (error) throw new BackendAuthError(/anonymous/i.test(error.message) ? 'Guest visits aren’t switched on yet. Join PLACES FOR US to come in — it’s free.' : friendly(error.message))
 }
 
 /** Whether a username is free in the shared world. */

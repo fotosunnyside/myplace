@@ -156,7 +156,7 @@ test('ads, team workrooms and leaving PLACES', async ({ browser }) => {
   await mo.page.goto('./')
   await mo.page.getByRole('button', { name: 'Join PLACES' }).filter({ visible: true }).first().click()
   await fillJoin(mo.page, 'Mo Maker', m)
-  await expect(mo.page.getByText('Welcome to PLACES, Mo!')).toBeVisible()
+  await expect(mo.page.getByText('Welcome to PLACES FOR US, Mo!')).toBeVisible()
 
   // Kai books a banner (test mode); everyone sees it in that Place, scheduled by the database.
   await kai.page.goto('advertise/?place=workplace')

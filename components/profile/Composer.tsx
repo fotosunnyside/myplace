@@ -21,7 +21,7 @@ export function Composer() {
         setBody('')
         setImage(undefined)
       }
-    }, 'Join PLACES to share posts.')
+    }, 'Join PLACES FOR US to share posts.')
 
   const actions = [
     { label: 'Photo', icon: ImageIcon },

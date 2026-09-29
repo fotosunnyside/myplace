@@ -102,7 +102,7 @@ export function MindPlaceApp({ compact = false }: { compact?: boolean }) {
                 See All →
               </Link>
             ) : (
-              <Button size="sm" variant="soft" onClick={() => withAuth(() => openCreate('discussion'), 'Join PLACES to start a discussion.')}>
+              <Button size="sm" variant="soft" onClick={() => withAuth(() => openCreate('discussion'), 'Join PLACES FOR US to start a discussion.')}>
                 + Start a discussion
               </Button>
             )}

@@ -69,7 +69,7 @@ export function WorkPlaceApp({ compact = false }: { compact?: boolean }) {
                 <>
                   <p className="mt-3 text-sm text-navy-soft">Join to apply in one tap with your PLACES profile.</p>
                   <Button size="sm" className="mt-4 w-full" onClick={() => openAuth({ mode: 'join' })}>
-                    Join PLACES
+                    Join PLACES FOR US
                   </Button>
                 </>
               )}
@@ -86,7 +86,7 @@ export function WorkPlaceApp({ compact = false }: { compact?: boolean }) {
                   Your workrooms <span className="text-muted">{(world.workrooms ?? []).filter((w) => w.memberIds.includes(account.id)).length} →</span>
                 </Link>
               )}
-              <Button size="sm" variant="soft" className="mt-3 w-full" onClick={() => withAuth(() => openCreate('opportunity'), 'Join PLACES to post an opportunity.')}>
+              <Button size="sm" variant="soft" className="mt-3 w-full" onClick={() => withAuth(() => openCreate('opportunity'), 'Join PLACES FOR US to post an opportunity.')}>
                 + Post an opportunity
               </Button>
             </Card>

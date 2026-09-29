@@ -15,6 +15,7 @@ import { JOB_POST } from '@/lib/config'
 import { closeCreate, openCreate, toast, useCreate, type CreateKind } from '@/lib/ui'
 import { orderedDistricts } from '@/lib/world/districts'
 import type { Opportunity, Product } from '@/lib/types'
+import { CREATE_PLACE_HREF } from '@/lib/spaces/rooms'
 
 const MENU: Record<string, { label: string; kind: Exclude<CreateKind, 'menu' | null> }> = {
   yourplace: { label: 'Share a post', kind: 'post' },
@@ -54,7 +55,7 @@ function Menu() {
       {orderedDistricts().map((d) => (
         <li key={d.id}>
           <button
-            onClick={() => withAuth(() => openCreate(MENU[d.id].kind), 'Join PLACES to start creating.')}
+            onClick={() => withAuth(() => openCreate(MENU[d.id].kind), 'Join PLACES FOR US to start creating.')}
             className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-white/80 p-3 text-left transition hover:border-teal/30 hover:bg-white"
           >
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-wash text-teal-deep">
@@ -79,13 +80,13 @@ function Menu() {
         </Link>
       </li>
       <li>
-        <Link href="/myplace/?host=1" onClick={closeCreate} className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-white/80 p-3 transition hover:border-teal/30 hover:bg-white">
+        <Link href={CREATE_PLACE_HREF} onClick={closeCreate} className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-white/80 p-3 transition hover:border-teal/30 hover:bg-white">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-wash text-teal-deep">
             <DoorOpen className="h-5 w-5" />
           </span>
           <span className="flex flex-col">
-            <span className="text-sm font-semibold">Host a space</span>
-            <span className="text-xs text-muted">your own virtual room</span>
+            <span className="text-sm font-semibold">Create a Virtual Place</span>
+            <span className="text-xs text-muted">your own room, with a link to share</span>
           </span>
         </Link>
       </li>

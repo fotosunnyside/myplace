@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Privacy' }
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy" updated="September 27, 2026">
-      <p>PLACES is built to be a calmer, more respectful corner of the internet. This page explains what happens to your information.</p>
+      <p>PLACES FOR US (“PLACES”) is built to be a calmer, more respectful corner of the internet. This page explains what happens to your information.</p>
       <h2>Where your data lives today</h2>
       <p>
         Right now your account and everything you create — posts, messages, listings, applications, saved items and learning progress — are stored

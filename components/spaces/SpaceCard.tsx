@@ -40,7 +40,7 @@ export function SpaceCard({ space, count, size = 'lg' }: { space: VirtualSpace; 
   const behaviour = roomBehaviour(space)
   const inside = session.space?.id === space.id && (session.phase === 'in-room' || session.phase === 'reconnecting')
   // Rooms open to guests take visitors straight to the door (name only); other rooms ask them to join first.
-  const enter = () => (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`))
+  const enter = () => (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES FOR US to enter ${space.name}.`))
 
   return (
     <article

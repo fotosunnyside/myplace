@@ -27,7 +27,7 @@ function SignInPrompt({ title, text }: { title: string; text: string }) {
       <h1 className="font-serif text-3xl">{title}</h1>
       <p className="mt-2 text-muted">{text}</p>
       <div className="mt-6 flex justify-center gap-3">
-        <Button onClick={() => openAuth({ mode: 'join' })}>Join PLACES</Button>
+        <Button onClick={() => openAuth({ mode: 'join' })}>Join PLACES FOR US</Button>
         <Button variant="outline" onClick={() => openAuth({ mode: 'signin' })}>
           Sign in
         </Button>
@@ -75,7 +75,7 @@ export function NotificationsPage() {
   return (
     <Shell width="max-w-2xl">
       {ready && !world.accountId ? (
-        <SignInPrompt title="Notifications" text="Join PLACES to hear about replies, orders and applications." />
+        <SignInPrompt title="Notifications" text="Join PLACES FOR US to hear about replies, orders and applications." />
       ) : (
         <>
           <h1 className="font-serif text-4xl">Notifications</h1>

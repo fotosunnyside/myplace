@@ -62,7 +62,7 @@ export function ShopDetail() {
               withAuth(() => {
                 const r = perform((s, now) => openThread(s, shop.ownerId, { kind: 'shop', refId: shop.id, label: shop.name }, now))
                 if (r.ok) router.push(`/messages/?t=${r.id}`)
-              }, 'Join PLACES to message shop owners.')
+              }, 'Join PLACES FOR US to message shop owners.')
             }
           >
             <MessageCircle className="h-4 w-4" /> Message the shop

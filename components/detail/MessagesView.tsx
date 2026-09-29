@@ -39,7 +39,7 @@ export function MessagesView() {
           <h1 className="mt-4 font-serif text-3xl">One inbox across every Place</h1>
           <p className="mt-2 text-muted">Message sellers, employers, teachers and friends — all from one identity.</p>
           <Button className="mt-6" onClick={() => openAuth({ mode: 'join' })}>
-            Join PLACES
+            Join PLACES FOR US
           </Button>
         </div>
       </Shell>

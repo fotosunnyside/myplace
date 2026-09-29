@@ -70,7 +70,11 @@ export function slugFor(name: string) {
   return `${base}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export const roomHref = (slug: string, enter = false) => `/myplace/space/?room=${encodeURIComponent(slug)}${enter ? '&enter=1' : ''}`
+/** Virtual Places live in YourPlace: the list is a YourPlace tab, each room has its own page. */
+export const PLACES_HREF = '/yourplace/?tab=places'
+export const CREATE_PLACE_HREF = '/yourplace/?tab=places&host=1'
+export const ROOM_PATH = '/yourplace/place'
+export const roomHref = (slug: string, enter = false) => `${ROOM_PATH}/?room=${encodeURIComponent(slug)}${enter ? '&enter=1' : ''}`
 
 /* ------------------------------------------------------------------ */
 /* Validation (mirrors the database's check constraints)                */

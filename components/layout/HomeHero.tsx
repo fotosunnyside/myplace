@@ -13,7 +13,9 @@ const values = [
 function Headline({ className = '' }: { className?: string }) {
   return (
     <h1 className={`font-serif text-navy ${className}`}>
-      <span className="block text-[length:var(--hero-title)] font-semibold leading-[0.9] tracking-[-0.01em]">PLACES</span>
+      <span className="block text-[length:var(--hero-title)] font-semibold leading-[0.9] tracking-[-0.01em]">
+        <span className="whitespace-nowrap">PLACES<span className="ml-[0.2em] text-[0.42em] tracking-[0.06em]">FOR US</span></span>
+      </span>
       <span className="mt-[0.35em] block text-[length:var(--hero-sub)] leading-[1.08] tracking-[-0.01em]">
         The internet,
         <br />
@@ -69,7 +71,7 @@ const heroVars = [
  */
 export function HomeHero() {
   return (
-    <section aria-label="Welcome to PLACES" className={`relative hidden bg-cream md:block ${heroVars}`}>
+    <section aria-label="Welcome to PLACES FOR US" className={`relative hidden bg-cream md:block ${heroVars}`}>
       <div className="grid grid-cols-[1.1fr_1fr] items-end gap-8 px-8 pb-6 pt-[108px] lg:absolute lg:inset-y-0 lg:left-0 lg:z-10 lg:flex lg:w-[29%] lg:flex-col lg:items-stretch lg:justify-center lg:gap-0 lg:pb-[1vw] lg:pl-[3.2vw] lg:pr-[1vw] lg:pt-[84px]">
         <Headline />
         <div className="flex flex-col items-start gap-5 lg:contents">

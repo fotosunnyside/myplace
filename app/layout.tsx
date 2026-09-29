@@ -23,20 +23,20 @@ const dmSans = DM_Sans({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 const description =
-  'PLACES turns the internet into an explorable world: YourPlace, MindPlace, MarketPlace and WorkPlace — one identity, four Places, one connected world.'
+  'PLACES FOR US turns the internet into an explorable world: YourPlace, MindPlace, MarketPlace and WorkPlace — one identity, four Places, one connected world.'
 
 export const metadata: Metadata = {
   // Origin only: Next adds the base path to metadata URLs itself.
   metadataBase: new URL(new URL(siteUrl).origin),
-  openGraph: { type: 'website', siteName: 'PLACES', title: 'PLACES — The internet, made into a world.', description },
-  twitter: { card: 'summary_large_image', title: 'PLACES — The internet, made into a world.', description },
+  openGraph: { type: 'website', siteName: 'PLACES FOR US', title: 'PLACES FOR US — The internet, made into a world.', description },
+  twitter: { card: 'summary_large_image', title: 'PLACES FOR US — The internet, made into a world.', description },
   title: {
-    default: 'PLACES — The internet, made into a world.',
-    template: '%s · PLACES',
+    default: 'PLACES FOR US — The internet, made into a world.',
+    template: '%s · PLACES FOR US',
   },
   description,
-  applicationName: 'PLACES',
-  appleWebApp: { capable: true, title: 'PLACES', statusBarStyle: 'default' },
+  applicationName: 'PLACES FOR US',
+  appleWebApp: { capable: true, title: 'PLACES FOR US', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
 }
 

@@ -7,7 +7,7 @@ import { TextArea, TextField } from '@/components/ui/fields'
 import { Button, Card } from '@/components/ui/primitives'
 import { RoomBackdrop } from '@/components/spaces/RoomBackdrop'
 import { prepareBackground } from '@/lib/spaces/image'
-import { CAPACITY_MAX, CAPACITY_MIN, DESCRIPTION_MAX, NAME_MAX, validatePatch } from '@/lib/spaces/rooms'
+import { CAPACITY_MAX, CAPACITY_MIN, DESCRIPTION_MAX, NAME_MAX, validatePatch, roomHref } from '@/lib/spaces/rooms'
 import { applySpace, spacesBackend, useOccupancy, useSpaces } from '@/lib/spaces/store'
 import type { BackgroundStyle, SpacePatch, VirtualSpace } from '@/lib/spaces/types'
 import { SpaceError } from '@/lib/spaces/types'
@@ -21,7 +21,7 @@ export function SpaceEditorPage() {
   const spaces = useSpaces()
   const space = spaces.status === 'ready' ? spaces.data.find((s) => s.id === id) : undefined
   return (
-    <AdminGate title={space ? `Edit ${space.name}` : 'Edit room'} back={{ href: '/admin/spaces', label: 'Virtual Spaces' }}>
+    <AdminGate title={space ? `Edit ${space.name}` : 'Edit room'} back={{ href: '/admin/spaces', label: 'Virtual Places' }}>
       {spaces.status === 'loading' ? (
         <div className="h-64 animate-pulse rounded-panel bg-white/60" />
       ) : space ? (
@@ -208,7 +208,7 @@ function SpaceEditor({ space }: { space: VirtualSpace }) {
             ]}
             onChange={(v) => set({ isActive: v === 'live' })}
           />
-          {!draft.isActive && space.isActive && <p className="text-sm text-navy-soft">Closing sends everyone inside back to Spaces{inside ? ` (${inside} now)` : ''}, and the room shows as closed.</p>}
+          {!draft.isActive && space.isActive && <p className="text-sm text-navy-soft">Closing sends everyone inside back to Virtual Places{inside ? ` (${inside} now)` : ''}, and the room shows as closed.</p>}
           <Switch label="Open to guests — drop in with just a name, no account" on={draft.guests} onChange={(v) => set({ guests: v })} />
           <Switch label="Allow cameras" on={draft.allowCamera} onChange={(v) => set({ allowCamera: v })} />
           <Switch label="Allow microphones" on={draft.allowMicrophone} onChange={(v) => set({ allowMicrophone: v })} />
@@ -262,7 +262,7 @@ function SpaceEditor({ space }: { space: VirtualSpace }) {
             Discard
           </Button>
         </div>
-        <button onClick={() => router.push(`/myplace/space/?room=${space.slug}`)} className="text-sm font-medium text-teal-deep hover:underline">
+        <button onClick={() => router.push(roomHref(space.slug))} className="text-sm font-medium text-teal-deep hover:underline">
           Open the room →
         </button>
       </aside>

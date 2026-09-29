@@ -14,6 +14,7 @@ import { formatPrice, me } from '@/lib/store/selectors'
 import type { PlanKind } from '@/lib/types'
 import { openAuth } from '@/lib/ui'
 import { cn } from '@/lib/cn'
+import { PLACES_HREF } from '@/lib/spaces/rooms'
 
 const money = (cents: number) => formatPrice(cents).replace(/\.00$/, '')
 
@@ -33,7 +34,7 @@ const ROWS: [string, Cell, Cell][] = [
   ['Local MarketPlace transactions', 'Free', 'Free'],
   ['Publish a course or membership', `${money(PLANS.create.price)}/mo each`, { text: INCLUDED, strong: true }],
   ['Course & membership platform fee', COURSE_FEE_LABEL, { text: '0%', strong: true }],
-  ['Host virtual spaces', `${money(PLANS.host.price)}/mo`, { text: INCLUDED, strong: true }],
+  ['Create Virtual Places', `${money(PLANS.host.price)}/mo`, { text: INCLUDED, strong: true }],
   ['Post a WorkPlace opportunity', `${money(JOB_POST.price)}/post`, { text: INCLUDED, strong: true }],
   ['Shipped MarketPlace transaction', SALES_FEE_LABEL, SALES_FEE_LABEL],
   ['Sponsored placements', `${money(ADS.week.price)}/week`, `${money(ADS.week.price)}/week`],
@@ -159,9 +160,9 @@ export function PricingPage() {
           />
           <Option
             icon={<DoorOpen className="h-5 w-5" />}
-            title={`Host a Space — ${money(PLANS.host.price)}/month`}
-            text="Make your own rooms: virtual meetings, communities, classes, networking or gatherings."
-            action={<Button variant="soft" size="sm" onClick={() => choosePlan('host')}>Make your own room</Button>}
+            title={`Create Virtual Places — ${money(PLANS.host.price)}/month`}
+            text="Your own Virtual Places: meetings, communities, classes, networking or gatherings, with a link to share."
+            action={<Button variant="soft" size="sm" onClick={() => choosePlan('host')}>Create a Virtual Place</Button>}
           />
           <Option
             icon={<Users className="h-5 w-5" />}
@@ -211,8 +212,8 @@ function Option({ icon, title, text, action }: { icon: ReactNode; title: string;
 }
 
 const CANCEL_NOTE: Record<PlanKind, string> = {
-  pass: 'Cancel PLACES Pass? Courses you publish will need Create in MindPlace to stay listed, and your hosted spaces close unless you keep Host a Space.',
-  host: 'Cancel Host a Space? Your spaces close until you host again.',
+  pass: 'Cancel PLACES Pass? Courses you publish will need Create in MindPlace to stay listed, and your Virtual Places close unless you keep Create Virtual Places.',
+  host: 'Cancel Create Virtual Places? Your Virtual Places close until you start it again.',
   create: 'Cancel Create in MindPlace? Your courses and memberships will be hidden from MindPlace until you restart it.',
 }
 
@@ -260,8 +261,8 @@ function YourPlans() {
           Your courses
         </Link>{' '}
         ·{' '}
-        <Link href="/myplace" className="text-teal-deep hover:underline">
-          Your spaces
+        <Link href={PLACES_HREF} className="text-teal-deep hover:underline">
+          Your Virtual Places
         </Link>
       </p>
     </section>

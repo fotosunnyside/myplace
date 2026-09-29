@@ -59,7 +59,7 @@ test('admins change rooms without code; people see it live and the database enfo
   const ada = await signIn(browser, admin.email)
   await ada.getByRole('button', { name: 'Account menu' }).click()
   await ada.getByRole('menuitem', { name: 'Admin' }).click()
-  await ada.getByRole('link', { name: /Virtual Spaces/ }).click()
+  await ada.getByRole('link', { name: /Virtual Places/ }).click()
   await expect(ada.getByRole('heading', { name: 'Town Hall' })).toBeVisible()
   await expect(ada.getByRole('heading', { name: 'Accountability Department' })).toBeVisible()
   await ada.getByRole('link', { name: 'Edit Town Hall' }).click()
@@ -79,7 +79,7 @@ test('admins change rooms without code; people see it live and the database enfo
   expect((await fetch(saved.background_url)).status).toBe(200)
 
   // The member's Spaces page picks up the new name, and they walk in.
-  await milo.goto('myplace/')
+  await milo.goto('yourplace/?tab=places')
   await expect(milo.getByRole('heading', { name: 'Town Square' })).toBeVisible()
   await milo.getByRole('button', { name: 'Enter Town Square' }).click()
   await expect(milo.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
@@ -94,7 +94,7 @@ test('admins change rooms without code; people see it live and the database enfo
   await expect(milo.getByTestId('room-count')).toHaveText(/2 people here/, { timeout: 15_000 })
 
   // ...so with capacity 2 the database turns the next person away.
-  await ada.goto('myplace/space/?room=town-hall')
+  await ada.goto('yourplace/place/?room=town-hall')
   await ada.getByRole('button', { name: 'Enter Town Square' }).click()
   await expect(ada.getByText('This room is currently full.')).toBeVisible()
 
@@ -107,7 +107,7 @@ test('admins change rooms without code; people see it live and the database enfo
   await expect(milo.getByText('This room is currently closed.')).toBeVisible({ timeout: 20_000 })
   await milo.goto('yourplace/')
   await expect(milo.getByRole('button', { name: 'Town Square is closed' })).toBeDisabled()
-  await milo.goto('myplace/')
+  await milo.goto('yourplace/?tab=places')
   await expect(milo.getByText('Closed', { exact: true }).first()).toBeVisible()
   await expect(milo.getByText('Closed for now').first()).toBeVisible()
 
@@ -126,14 +126,14 @@ test('admins change rooms without code; people see it live and the database enfo
   await milo.getByRole('button', { name: 'Go to Town Square' }).click()
   await expect(milo.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
   await milo.getByRole('button', { name: 'Leave' }).click()
-  await expect(milo).toHaveURL(/\/myplace\/$/)
+  await expect(milo).toHaveURL(/\/yourplace\/\?tab=places/)
   await expect.poll(async () => (await service().from('virtual_space_participants').select('user_id').eq('user_id', member.id)).data?.length).toBe(0)
 })
 
 test('a room keeps you while you look around PLACES', async ({ browser }) => {
   const member = await makeUser('Noor')
   const page: Page = await signIn(browser, member.email)
-  await page.goto('myplace/space/?room=accountability-room')
+  await page.goto('yourplace/place/?room=accountability-room')
   await page.getByRole('button', { name: 'Start Working' }).click()
   await expect(page.getByText('Bring something you need to finish.')).toBeVisible()
   await page.getByRole('link', { name: 'MindPlace' }).last().click() // the room's own way around PLACES

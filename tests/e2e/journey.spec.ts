@@ -21,7 +21,7 @@ test('a person can join and use every Place', async ({ page }, info) => {
   await page.getByLabel('Username').fill(username)
   await page.getByLabel('Email').fill(`${username}@example.com`)
   await page.getByRole('button', { name: 'Create my place' }).click()
-  await expect(page.getByText('Welcome to PLACES, Test!')).toBeVisible()
+  await expect(page.getByText('Welcome to PLACES FOR US, Test!')).toBeVisible()
 
   // YourPlace: post
   await page.getByPlaceholder("What's on your mind?").first().fill('Hello from the journey test')
@@ -319,13 +319,15 @@ test('PLACES Pass: one Pass for posting, publishing and hosting — and the menu
   })
 
   // So is hosting a space of your own.
+  await page.goto('yourplace/?tab=places')
+  await page.getByRole('button', { name: 'Create a Virtual Place' }).click()
+  await page.getByLabel('Name', { exact: true }).fill('Writers Circle')
+  await page.getByRole('button', { name: 'Create my Virtual Place' }).click()
+  await expect(page).toHaveURL(/yourplace\/place\/\?room=writers-circle-/)
+  // Old MyPlace links still work: they lead to Virtual Places in YourPlace.
   await page.goto('myplace/')
-  await page.getByRole('button', { name: 'Make your own room' }).click()
-  await page.getByLabel('Room name').fill('Writers Circle')
-  await page.getByRole('button', { name: 'Open my room' }).click()
-  await expect(page).toHaveURL(/myplace\/space\/\?room=writers-circle-/)
-  await page.goto('myplace/')
-  await expect(page.getByRole('heading', { name: 'Your spaces' })).toBeVisible()
+  await expect(page).toHaveURL(/yourplace\/\?tab=places/)
+  await expect(page.getByRole('heading', { name: 'Your Virtual Places' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Writers Circle' })).toBeVisible()
 
   // A website on the profile.
@@ -357,7 +359,7 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
   // The official rooms are small squares under the profile panel — not a section taking over YourPlace.
   await page.goto('yourplace/')
   await expect(page.getByRole('button', { name: 'Go to Accountability Department' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Live Spaces' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Virtual Places' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Go to Town Hall' }).click()
   await page.getByLabel('Your name').fill('Room Tester')
   await page.getByLabel('Username').fill(`rooms_${info.project.name}`)
@@ -365,7 +367,7 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
   await page.getByRole('button', { name: 'Create my place' }).click()
 
   // Straight into the room, as a bubble, with honest media status.
-  await expect(page).toHaveURL(/\/myplace\/space\/\?room=town-hall/)
+  await expect(page).toHaveURL(/\/yourplace\/place\/\?room=town-hall/)
   await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
   await expect(page.getByTestId('room-count')).toHaveText('1 person here')
   await expect(page.getByRole('button', { name: /^You:/ })).toBeVisible()
@@ -378,20 +380,21 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
   await expect(mic).not.toHaveAttribute('aria-pressed', before!)
 
   // The count is the real one.
-  await page.getByRole('link', { name: /Spaces/ }).first().click()
+  await page.getByRole('link', { name: /Virtual Places/ }).first().click()
   await expect(page.getByRole('region', { name: /You're in Town Hall/ })).toBeVisible()
-  await expect(page.getByTestId('space-count').first()).toHaveText('1 person here')
+  await expect(page.getByRole('region', { name: 'Virtual Places', exact: true }).getByTestId('space-count').first()).toHaveText('1 person here')
   await expect(page.getByText('Come in. Meet people. Talk about what’s happening around PLACES.')).toBeVisible()
 
-  // The Accountability Department greets you and starts quiet.
+  // The Accountability Department greets you and starts quiet (an old /myplace/space link still gets you there).
   await page.goto('myplace/space/?room=accountability-room')
+  await expect(page).toHaveURL(/\/yourplace\/place\/\?room=accountability-room/)
   await page.getByRole('button', { name: 'Start Working' }).click()
   await expect(page.getByText('Bring something you need to finish. Work quietly alongside other people and get it done.')).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Unmute' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Leave' }).click()
-  await expect(page).toHaveURL(/\/myplace\/$/)
-  await expect(page.getByTestId('space-count').first()).toHaveText('No one here yet')
+  await expect(page).toHaveURL(/\/yourplace\/\?tab=places/)
+  await expect(page.getByRole('region', { name: 'Virtual Places', exact: true }).getByTestId('space-count').first()).toHaveText('No one here yet')
 
   // No admin tools without the backend and an admin account.
   await page.goto('admin/spaces/')
@@ -406,7 +409,7 @@ test('a guest drops into the Accountability Department with just a name', async 
 
   // The short link to share (e.g. in a Skool community) goes straight to the door: a name, no account.
   await page.goto('accountability/')
-  await expect(page).toHaveURL(/myplace\/space\/\?room=accountability-room/)
+  await expect(page).toHaveURL(/yourplace\/place\/\?room=accountability-room/)
   await page.getByLabel('Your name').fill('Sky Guest')
   await page.getByRole('button', { name: 'Drop in' }).click()
   await expect(page.getByRole('toolbar', { name: 'Room controls' })).toBeVisible()
@@ -416,11 +419,11 @@ test('a guest drops into the Accountability Department with just a name', async 
 
   // Other rooms are for members: a guest is asked to join.
   await page.getByRole('button', { name: 'Leave' }).click()
-  await page.goto('myplace/space/?room=town-hall')
+  await page.goto('yourplace/place/?room=town-hall')
   await expect(page.getByRole('button', { name: 'Join PLACES' }).last()).toBeVisible()
 
-  // "Make your own room" sits under the rooms on YourPlace.
+  // "Create a Virtual Place" sits under the Virtual Places on YourPlace.
   await page.goto('yourplace/')
-  await expect(page.getByRole('link', { name: 'Make your own room' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Create a Virtual Place' })).toBeVisible()
   expect(errors).toEqual([])
 })

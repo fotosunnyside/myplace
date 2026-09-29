@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Plus, Users } from 'lucide-react'
-import { featuredSpaces, roomHref } from '@/lib/spaces/rooms'
+import { featuredSpaces, roomHref, CREATE_PLACE_HREF, PLACES_HREF } from '@/lib/spaces/rooms'
 import { useRoomSession } from '@/lib/spaces/live'
 import { useOccupancy, useSpaces } from '@/lib/spaces/store'
 import type { VirtualSpace } from '@/lib/spaces/types'
@@ -32,19 +32,19 @@ export function RoomSquares({ className }: { className?: string }) {
   if (!list.length) return null
 
   return (
-    <section aria-label="PLACES rooms" className={cn('grid gap-2 @3xl:gap-3', className)}>
-      <p className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-muted @3xl:text-xs">Rooms · free to join</p>
+    <section aria-label="Official Virtual Places" className={cn('grid gap-2 @3xl:gap-3', className)}>
+      <p className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-muted @3xl:text-xs">Virtual Places · free to join</p>
       {list.map((s) => (
         <RoomSquare key={s.id} space={s} count={occupancy ? (occupancy[s.id] ?? 0) : null} />
       ))}
       <Link
-        href="/myplace/?host=1"
+        href={CREATE_PLACE_HREF}
         className="flex items-center justify-center gap-1 rounded-card border border-dashed border-teal/40 bg-teal-wash/40 px-2 py-2.5 text-center text-[0.6rem] font-semibold text-teal-deep transition hover:bg-teal-wash @3xl:py-3.5 @3xl:text-sm"
       >
-        <Plus className="h-3 w-3 @3xl:h-4 @3xl:w-4" /> Make your own room
+        <Plus className="h-3 w-3 @3xl:h-4 @3xl:w-4" /> Create a Virtual Place
       </Link>
-      <Link href="/myplace" className="text-[0.6rem] font-medium text-teal-deep hover:underline @3xl:text-sm">
-        All spaces →
+      <Link href={PLACES_HREF} className="text-[0.6rem] font-medium text-teal-deep hover:underline @3xl:text-sm">
+        All Virtual Places →
       </Link>
     </section>
   )
@@ -59,7 +59,7 @@ function RoomSquare({ space, count }: { space: VirtualSpace; count: number | nul
   return (
     <button
       onClick={() =>
-        space.isActive && (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES to enter ${space.name}.`))
+        space.isActive && (openToGuests(space) ? router.push(roomHref(space.slug, true)) : withAuth(() => router.push(roomHref(space.slug, true)), `Join PLACES FOR US to enter ${space.name}.`))
       }
       disabled={!space.isActive}
       aria-label={space.isActive ? label : `${space.name} is closed`}

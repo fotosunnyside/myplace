@@ -65,7 +65,7 @@ export function CourseDetail() {
       } else if (confirm(`Get ${c.title} as a test purchase? No payment is taken — the creator hasn’t connected Stripe yet.`)) {
         perform((s, t) => purchaseCourse(s, c.id, 'test', t), 'Test purchase complete — the course is unlocked.')
       }
-    }, 'Join PLACES to get this course.')
+    }, 'Join PLACES FOR US to get this course.')
   const members = count(c.baseMembers, Object.values(world.enrollments).filter((l) => l.some((x) => x.courseId === c.id)).length)
 
   return (
@@ -124,7 +124,7 @@ export function CourseDetail() {
                 <p className="mt-2 text-sm text-muted">{done === c.lessons.length ? 'Completed 🎉' : `${done} of ${c.lessons.length} lessons complete`}</p>
               </div>
             ) : (
-              <Button size="lg" className="flex-1 !text-base" onClick={() => withAuth(() => perform((s, t) => enroll(s, c.id, t), `You joined ${c.title}.`), 'Join PLACES to start learning.')}>
+              <Button size="lg" className="flex-1 !text-base" onClick={() => withAuth(() => perform((s, t) => enroll(s, c.id, t), `You joined ${c.title}.`), 'Join PLACES FOR US to start learning.')}>
                 {c.kind === 'live' ? 'Reserve my spot' : c.price ? 'Start learning' : 'Start learning — free'}
               </Button>
             )}
@@ -150,7 +150,7 @@ export function CourseDetail() {
                       </span>
                     ) : (
                     <button
-                      onClick={() => withAuth(() => perform((s, t) => toggleLesson(s, c.id, l.id, t)), 'Join PLACES to track your progress.')}
+                      onClick={() => withAuth(() => perform((s, t) => toggleLesson(s, c.id, l.id, t)), 'Join PLACES FOR US to track your progress.')}
                       aria-pressed={complete}
                       aria-label={complete ? `Mark “${l.title}” as not done` : `Mark “${l.title}” as done`}
                       className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 transition', complete ? 'border-teal bg-teal text-white' : 'border-line text-transparent hover:border-teal/50')}

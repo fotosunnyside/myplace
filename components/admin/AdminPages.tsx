@@ -25,7 +25,7 @@ export function AdminHome() {
             <span className="grid h-11 w-11 place-items-center rounded-full bg-teal-wash text-teal-deep">
               <DoorOpen className="h-5 w-5" />
             </span>
-            <h2 className="mt-4 font-serif text-2xl">Virtual Spaces</h2>
+            <h2 className="mt-4 font-serif text-2xl">Virtual Places</h2>
             <p className="mt-1 text-navy-soft">Official rooms: names, capacity, backgrounds, cameras and microphones, open or closed.</p>
             <p className="mt-4 text-sm text-muted">
               {spaces.status === 'ready' ? `${list.length} rooms · ${live} live${inside != null ? ` · ${peopleHere(inside).replace(' here', ' inside')}` : ''}` : 'Loading…'}
@@ -47,7 +47,7 @@ export function AdminSpaces() {
   const list = spaces.status === 'ready' ? spaces.data.filter((s) => s.isOfficial) : []
 
   return (
-    <AdminGate title="Virtual Spaces" back={{ href: '/admin', label: 'Dashboard' }}>
+    <AdminGate title="Virtual Places" back={{ href: '/admin', label: 'Dashboard' }}>
       <p className="-mt-4 mb-6 max-w-2xl text-navy-soft">Changes save to the database and reach everyone immediately — open rooms and YourPlace update live.</p>
       {spaces.status === 'loading' && <div className="h-40 animate-pulse rounded-panel bg-white/60" />}
       {spaces.status === 'error' && <p className="rounded-panel bg-white/70 p-6 text-center text-muted">{spaces.message}</p>}
