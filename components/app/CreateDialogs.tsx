@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { GraduationCap } from 'lucide-react'
+import { DoorOpen, GraduationCap } from 'lucide-react'
 import { useState } from 'react'
 import { DistrictIcon } from '@/components/districts/DistrictIcon'
 import { Dialog } from '@/components/ui/Dialog'
 import { ImagePicker, Select, TextArea, TextField } from '@/components/ui/fields'
 import { Button } from '@/components/ui/primitives'
-import { DISCUSSION_CATEGORIES, checkOpportunity, createDiscussion, createOpportunity, createPost, createProduct, createShop, type OpportunityInput } from '@/lib/store/actions'
+import { DISCUSSION_CATEGORIES, checkOpportunity, createDiscussion, createOpportunity, createPost, createProduct, createShop, hasPass, type OpportunityInput } from '@/lib/store/actions'
 import { perform, useWorld, withAuth } from '@/lib/store/hooks'
 import { formatPrice, shopOf } from '@/lib/store/selectors'
 import { JOB_POST } from '@/lib/config'
@@ -74,7 +74,18 @@ function Menu() {
           </span>
           <span className="flex flex-col">
             <span className="text-sm font-semibold">Publish a course</span>
-            <span className="text-xs text-muted">in MindPlace · creator plan</span>
+            <span className="text-xs text-muted">or a membership, in MindPlace</span>
+          </span>
+        </Link>
+      </li>
+      <li>
+        <Link href="/myplace/?host=1" onClick={closeCreate} className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-white/80 p-3 transition hover:border-teal/30 hover:bg-white">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-wash text-teal-deep">
+            <DoorOpen className="h-5 w-5" />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-sm font-semibold">Host a space</span>
+            <span className="text-xs text-muted">your own virtual room</span>
           </span>
         </Link>
       </li>
@@ -239,7 +250,7 @@ function NewProduct() {
         <input type="checkbox" checked={ships} onChange={(e) => setShips(e.target.checked)} className="mt-0.5 h-4 w-4 accent-teal" />
         <span>
           <span className="block font-medium text-navy">This is a physical item I ship</span>
-          <span className="text-muted">No listing fees. Shipped sales carry a small 1% PLACES admin fee.</span>
+          <span className="text-muted">Local sales are free. Items bought through PLACES and shipped carry a 1% platform fee.</span>
         </span>
       </label>
       <TextField
@@ -271,6 +282,7 @@ const KINDS: Record<string, Opportunity['kind']> = { Job: 'job', Project: 'proje
 function OpportunityForm() {
   const router = useRouter()
   const world = useWorld()
+  const pass = hasPass(world)
   const myName = world.accounts.find((a) => a.id === world.accountId)?.name ?? ''
   const [f, setF] = useState({ title: '', org: myName, location: 'Remote', type: TYPES[0], kind: 'Job', tags: '', pay: '', description: '' })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
@@ -284,6 +296,14 @@ function OpportunityForm() {
           checkOpportunity(input)
         } catch (err) {
           return toast((err as Error).message, 'error')
+        }
+        if (pass) {
+          const r = perform((s, now) => createOpportunity(s, input, now, 'pass'), 'Opportunity posted in WorkPlace — included with PLACES Pass.')
+          if (r.ok) {
+            closeCreate()
+            router.push(`/workplace/opportunity/?id=${r.id}`)
+          }
+          return
         }
         if (JOB_POST.link) {
           // Pay the posting fee on Stripe; the post is published when they come back.
@@ -312,11 +332,20 @@ function OpportunityForm() {
       <TextField label="Pay" value={f.pay} onChange={set('pay')} placeholder="$30–40/hr" />
       <TextField label="Tags" value={f.tags} onChange={set('tags')} placeholder="Design, Remote, Creative" hint="Separate with commas." />
       <TextArea label="Description" value={f.description} onChange={set('description')} placeholder="What will the person do? What are you looking for?" maxLength={4000} required />
-      <p className="rounded-2xl bg-ivory px-4 py-3 text-sm text-navy-soft">
-        Posting costs <span className="font-semibold text-navy">{formatPrice(JOB_POST.price)}</span> per opportunity{JOB_POST.link ? ', paid securely with Stripe.' : ' (test mode — no payment yet).'}
-      </p>
+      {pass ? (
+        <p className="rounded-2xl bg-teal-wash/60 px-4 py-3 text-sm text-teal-deep">Posting is included with your PLACES Pass.</p>
+      ) : (
+        <p className="rounded-2xl bg-ivory px-4 py-3 text-sm text-navy-soft">
+          Post for <span className="font-semibold text-navy">{formatPrice(JOB_POST.price)}</span>
+          {JOB_POST.link ? ', paid securely with Stripe' : ' (test mode — no payment yet)'} — or{' '}
+          <Link href="/pricing" onClick={closeCreate} className="font-medium text-teal-deep hover:underline">
+            included with PLACES Pass
+          </Link>
+          .
+        </p>
+      )}
       <Button type="submit" size="lg" className="w-full !text-base">
-        Post opportunity · {formatPrice(JOB_POST.price)}
+        {pass ? 'Post opportunity · Included with PLACES Pass' : `Post opportunity · ${formatPrice(JOB_POST.price)}`}
       </Button>
     </form>
   )

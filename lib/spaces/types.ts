@@ -1,7 +1,7 @@
 /**
  * Virtual Spaces — live places people enter together.
  *
- * One model for every room. Town Hall and the Accountability Room are simply the first two
+ * One model for every room. Town Hall and the Accountability Department are simply the first two
  * official rows; course rooms, masterminds, study rooms and member-created rooms reuse it.
  */
 
@@ -79,6 +79,26 @@ export type SpacePatch = Partial<
     | 'focusY'
   >
 >
+
+/** What a host chooses when opening their own room. */
+export interface NewSpace {
+  name: string
+  description: string
+  roomType: RoomType
+  maxParticipants: number
+}
+
+/** Room types members can host today. */
+export const HOSTED_ROOM_TYPES: { type: RoomType; label: string }[] = [
+  { type: 'meeting', label: 'Meeting' },
+  { type: 'community', label: 'Community room' },
+  { type: 'class', label: 'Class' },
+  { type: 'study', label: 'Study group' },
+  { type: 'networking', label: 'Networking' },
+  { type: 'accountability', label: 'Accountability room' },
+  { type: 'mastermind', label: 'Mastermind' },
+  { type: 'event', label: 'Event' },
+]
 
 /** Someone currently in a room. */
 export interface SpacePresence {

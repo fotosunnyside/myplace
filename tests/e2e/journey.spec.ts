@@ -107,27 +107,30 @@ test('district labels fly into their Place', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'WorkPlace' })).toBeVisible()
 })
 
-test('a creator can subscribe, publish a paid course and a learner can unlock it', async ({ page }, info) => {
+test('a creator can publish a paid course with Create in MindPlace and a learner can unlock it', async ({ page }, info) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(String(e)))
   page.on('dialog', (d) => d.accept())
   const username = `creator_${info.project.name}`
 
+  // Create a course → the choice: $7/month per course, or PLACES Pass.
   await page.goto('teach/')
-  await page.getByRole('button', { name: 'Start teaching' }).click()
+  await expect(page.getByRole('button', { name: 'Get PLACES Pass' })).toBeVisible()
+  await page.getByRole('button', { name: 'Publish for $7/month' }).click()
   await page.getByLabel('Your name').fill('Cora Creator')
   await page.getByLabel('Username').fill(username)
   await page.getByLabel('Email').fill(`${username}@example.com`)
   await page.getByRole('button', { name: 'Create my place' }).click()
-  await expect(page.getByText('Test creator plan started.')).toBeVisible()
-  await expect(page.getByText('Your first course is waiting.')).toBeVisible()
+  await expect(page.getByText('Test Create in MindPlace plan started.')).toBeVisible()
+  await expect(page).toHaveURL(/teach\/course\/?$/)
+  await expect(page.getByRole('dialog')).toHaveCount(0) // the join dialog has closed
 
-  await page.getByRole('link', { name: 'Create a course' }).click()
   await page.locator('input[type=file]').first().setInputFiles('tests/e2e/fixture.png')
   await expect(page.getByRole('img', { name: 'Selected image' })).toBeVisible()
   await page.getByLabel('Title', { exact: true }).fill('Watercolor Basics')
-  await page.getByRole('radio', { name: /Paid/ }).click()
+  await page.getByRole('radio', { name: /One-time purchase/ }).click()
   await page.getByLabel('Price (USD)').fill('19')
+  await expect(page.getByText(/5% platform fee on each paid enrollment/)).toBeVisible()
   await page.getByLabel('Lesson title').fill('Materials')
   await page.getByLabel('Lesson content').fill('Brushes, paper and three paints.')
   await page.getByRole('button', { name: 'Add lesson' }).click()
@@ -255,20 +258,89 @@ test('a business can book the sponsored banner in a Place', async ({ page }, inf
   await page.waitForTimeout(350)
   await page.goto('mindplace/')
   await expect(page.getByRole('link', { name: /Sponsored: Candle Co/ })).toBeVisible()
+
+  // In YourPlace the sponsored spot sits at the bottom, and once in the feed like a post.
+  await page.goto('advertise/?place=yourplace')
+  await page.getByLabel('Business name').fill('Candle Co')
+  await page.getByLabel('Headline').fill('Small-batch candles for calm evenings')
+  await page.getByLabel('Link').fill('https://candle.example')
+  await page.locator('input[type=file]').setInputFiles('tests/e2e/fixture.png')
+  await page.getByRole('button', { name: /Book my banner · \$10/ }).click()
+  await expect(page.getByText('Test ad booked.')).toBeVisible()
+  await page.waitForTimeout(350)
+  await page.goto('yourplace/')
+  await expect(page.getByRole('link', { name: /Sponsored post: Candle Co/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Sponsored: Candle Co/ })).toBeVisible()
 })
 
-test('YourPlace leads into a live space in MyPlace', async ({ page, context }, info) => {
+test('PLACES Pass: one Pass for posting, publishing and hosting — and the menu keeps each Place in its place', async ({ page }, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  page.on('dialog', (d) => d.accept())
+  const desktop = !info.project.name.includes('phone')
+
+  if (desktop) {
+    await page.goto('./')
+    const nav = page.getByRole('navigation', { name: 'Primary' })
+    for (const place of ['YourPlace', 'MindPlace', 'MarketPlace', 'WorkPlace']) await expect(nav.getByRole('link', { name: place, exact: true })).toBeVisible()
+  }
+
+  // The pricing page compares Free with the Pass.
+  await page.goto('pricing/')
+  await expect(page.getByRole('heading', { name: /Free to explore\. Free to belong\./ })).toBeVisible()
+  const publishRow = page.getByRole('row', { name: /Publish a course or membership/ })
+  await expect(publishRow).toContainText('$7/mo each')
+  await expect(publishRow).toContainText('Included')
+  await expect(page.getByRole('row', { name: /Shipped MarketPlace transaction/ })).toContainText('1%')
+  await expect(page.getByRole('row', { name: /Sponsored placements/ })).toContainText('$10/week')
+
+  await page.getByRole('button', { name: 'Get PLACES Pass' }).first().click()
+  await join(page, 'Pia Pass', `pass_${info.project.name}`)
+  await expect(page.getByText('Test PLACES Pass started.')).toBeVisible()
+  await expect(page.getByText('Your PLACES Pass is active')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your plans' })).toBeVisible()
+
+  // Posting an opportunity is included.
+  await page.goto('workplace/')
+  await visible(page, '+ Post an opportunity').click()
+  await page.getByLabel('Title').fill('Studio assistant')
+  await page.getByLabel('Description').fill('Help run our studio two mornings a week.')
+  await page.getByRole('button', { name: 'Post opportunity · Included with PLACES Pass' }).click()
+  await expect(page).toHaveURL(/opportunity\/\?id=opp_/)
+
+  // So is hosting a space of your own.
+  await page.goto('myplace/')
+  await page.getByRole('button', { name: 'Host a space' }).click()
+  await page.getByLabel('Room name').fill('Writers Circle')
+  await page.getByRole('button', { name: 'Open my room' }).click()
+  await expect(page).toHaveURL(/myplace\/space\/\?room=writers-circle-/)
+  await page.goto('myplace/')
+  await expect(page.getByRole('heading', { name: 'Your spaces' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Writers Circle' })).toBeVisible()
+
+  // Orders (MarketPlace) and Applications (WorkPlace) are separate — and live rooms aren't in the menu.
+  if (desktop) {
+    await page.getByRole('button', { name: 'Account menu' }).click()
+    const menu = page.getByRole('menu')
+    await expect(menu.getByRole('menuitem', { name: /^Orders/ })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: /Live spaces/ })).toHaveCount(0)
+    await menu.getByRole('menuitem', { name: /^Applications/ }).click()
+    await expect(page).toHaveURL(/activity\/\?tab=applications/)
+    await expect(page.getByRole('tab', { name: 'Applications' })).toHaveAttribute('aria-selected', 'true')
+  }
+  expect(errors).toEqual([])
+})
+
+test('YourPlace leads into a live space', async ({ page, context }, info) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(String(e)))
   await context.grantPermissions(['camera', 'microphone'])
 
-  // Guests see the rooms and whether they're open; entering asks them to join.
+  // The official rooms are small squares under the profile panel — not a section taking over YourPlace.
   await page.goto('yourplace/')
-  await expect(page.getByRole('heading', { name: 'Live Spaces' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Town Hall' })).toBeVisible()
-  await expect(page.getByText('See who’s around. Drop in and say hello.')).toBeVisible()
-  await expect(page.getByText('Bring your work. Stay focused together.')).toBeVisible()
-  await page.getByRole('button', { name: 'Enter Town Hall' }).click()
+  await expect(page.getByRole('button', { name: 'Go to Accountability Department' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Live Spaces' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Go to Town Hall' }).click()
   await page.getByLabel('Your name').fill('Room Tester')
   await page.getByLabel('Username').fill(`rooms_${info.project.name}`)
   await page.getByLabel('Email').fill(`rooms_${info.project.name}@example.com`)
@@ -287,12 +359,13 @@ test('YourPlace leads into a live space in MyPlace', async ({ page, context }, i
   await mic.click()
   await expect(mic).not.toHaveAttribute('aria-pressed', before!)
 
-  // The count on YourPlace is the real one.
-  await page.getByRole('link', { name: /MyPlace/ }).first().click()
+  // The count is the real one.
+  await page.getByRole('link', { name: /Spaces/ }).first().click()
   await expect(page.getByRole('region', { name: /You're in Town Hall/ })).toBeVisible()
   await expect(page.getByTestId('space-count').first()).toHaveText('1 person here')
+  await expect(page.getByText('Come in. Meet people. Talk about what’s happening around PLACES.')).toBeVisible()
 
-  // The Accountability Room greets you and starts quiet.
+  // The Accountability Department greets you and starts quiet.
   await page.goto('myplace/space/?room=accountability-room')
   await page.getByRole('button', { name: 'Start Working' }).click()
   await expect(page.getByText('Bring something you need to finish. Work quietly alongside other people and get it done.')).toBeVisible()

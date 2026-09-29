@@ -52,16 +52,17 @@ test('courses, discussions and the social layer, shared', async ({ browser }) =>
   const c = `cora_${run}`
   const l = `lee_${run}`
 
-  // Cora starts teaching straight from joining (test creator plan) and publishes a paid course.
+  // Cora starts publishing straight from joining (a test Create in MindPlace plan) and publishes a paid course.
   await cora.page.goto('teach/')
-  await cora.page.getByRole('button', { name: 'Start teaching' }).click()
+  await cora.page.getByRole('button', { name: 'Publish for $7/month' }).click()
   await fillJoin(cora.page, 'Cora Creator', c)
-  await expect(cora.page.getByText('Test creator plan started.')).toBeVisible({ timeout: 15_000 })
-  await cora.page.getByRole('link', { name: 'Create a course' }).click()
+  await expect(cora.page.getByText('Test Create in MindPlace plan started.')).toBeVisible({ timeout: 15_000 })
+  await expect(cora.page).toHaveURL(/teach\/course\/?$/)
+  await expect(cora.page.getByRole('dialog')).toHaveCount(0) // the join dialog has closed
   await cora.page.locator('input[type=file]').first().setInputFiles('tests/e2e/fixture.png')
   await expect(cora.page.getByRole('img', { name: 'Selected image' })).toBeVisible()
   await cora.page.getByLabel('Title', { exact: true }).fill(`Watercolor ${run}`)
-  await cora.page.getByRole('radio', { name: /Paid/ }).click()
+  await cora.page.getByRole('radio', { name: /One-time purchase/ }).click()
   await cora.page.getByLabel('Price (USD)').fill('19')
   await cora.page.getByLabel('Lesson title').fill('Materials')
   await cora.page.getByLabel('Lesson content').fill('Brushes, paper and three paints.')
@@ -73,6 +74,7 @@ test('courses, discussions and the social layer, shared', async ({ browser }) =>
   const courseUrl = cora.page.url()
   const courseId = new globalThis.URL(courseUrl).searchParams.get('id')!
   await expect.poll(async () => (await service().from('course_lessons').select('id').eq('course_id', courseId)).data?.length, { timeout: 15_000 }).toBe(2)
+  expect((await service().from('member_plans').select('kind, quantity, status').eq('user_id', await profileId(c))).data).toEqual([{ kind: 'create', quantity: 1, status: 'active' }])
 
   // Lee finds it; the paid lesson is locked for him until he buys it.
   await lee.page.goto(courseUrl)
@@ -87,6 +89,8 @@ test('courses, discussions and the social layer, shared', async ({ browser }) =>
   await expect(lee.page.getByText('1 of 2 lessons complete')).toBeVisible()
   await go(cora.page, 'notifications/')
   await expect(cora.page.getByText(/Someone bought your course Watercolor/)).toBeVisible({ timeout: 15_000 })
+  // The database charged the 5% PLACES fee on the $19 sale.
+  expect((await service().from('course_purchases').select('total, fee').eq('course_id', courseId)).data).toEqual([{ total: 1900, fee: 95 }])
 
   // A discussion and a reply.
   await go(lee.page, 'mindplace/')

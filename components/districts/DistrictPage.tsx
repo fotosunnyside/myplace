@@ -40,7 +40,8 @@ export function DistrictPage({ id }: { id: DistrictId }) {
           </div>
         )}
 
-        <AdSlot district={id} className="mt-5 md:mt-10" />
+        {/* YourPlace keeps its sponsored spot at the bottom (and one in the feed); the other Places show it up top. */}
+        {id !== 'yourplace' && <AdSlot district={id} className="mt-5 md:mt-10" />}
 
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 24 }}
@@ -50,6 +51,8 @@ export function DistrictPage({ id }: { id: DistrictId }) {
         >
           <App />
         </motion.div>
+
+        {id === 'yourplace' && <AdSlot district={id} className="mt-8 md:mt-12" />}
 
         <section className="mt-12 md:mt-16">
           <p className="mb-4 text-center text-[0.7rem] font-medium uppercase tracking-[0.32em] text-muted">Keep exploring</p>

@@ -82,10 +82,12 @@ const friendly = (table: TableName, e: { code?: string; message?: string }) => {
   if (e.code === '23505') return table === 'applications' ? 'You already applied.' : table === 'shops' ? 'You already have a shop.' : 'That already exists.'
   if (e.code === 'P0001') return m
   if (e.code === '42501' || /row-level security/i.test(m)) {
-    if (table === 'courses') return 'Start your creator plan to publish courses.'
+    if (table === 'courses') return 'Choose Create in MindPlace or PLACES Pass to publish.'
+    if (table === 'opportunities') return 'Posting is included with PLACES Pass — or pay the $2 posting fee.'
     if (table === 'enrollments') return 'Buy this course to start learning.'
     return 'You don’t have permission to do that.'
   }
+  if (e.code === '23514' && /hosted rooms/i.test(m)) return m
   if (e.code === '23514') return 'Some details don’t look right. Please check and try again.'
   if (/fetch|network/i.test(m)) return 'We couldn’t reach PLACES. Check your connection.'
   return 'Something went wrong saving that. Please try again.'

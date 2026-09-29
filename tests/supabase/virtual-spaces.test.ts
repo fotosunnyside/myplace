@@ -63,11 +63,21 @@ describe.skipIf(!enabled)('virtual spaces (Supabase)', () => {
     for (const id of [adminId, ...ids]) await service.auth.admin.deleteUser(id)
   })
 
-  it('seeds the two official launch rooms with default settings', async () => {
-    const { data } = await anon.from('virtual_spaces').select('slug,name,description,room_type,max_participants,is_active,allow_camera,allow_microphone,is_official').order('sort_order')
+  it('seeds the two official launch rooms, as PLACES describes them', async () => {
+    const { data } = await anon.from('virtual_spaces').select('slug,name,description,room_type,max_participants,is_active,allow_camera,allow_microphone,is_official').eq('is_official', true).order('sort_order')
     expect(data).toEqual([
-      { slug: 'town-hall', name: 'Town Hall', description: "See who's around. Drop in and say hello.", room_type: 'social', max_participants: 20, is_active: true, allow_camera: true, allow_microphone: true, is_official: true },
-      { slug: 'accountability-room', name: 'Accountability Room', description: 'Bring your work. Stay focused together.', room_type: 'accountability', max_participants: 20, is_active: true, allow_camera: true, allow_microphone: true, is_official: true },
+      { slug: 'town-hall', name: 'Town Hall', description: "Come in. Meet people. Talk about what's happening around PLACES.", room_type: 'social', max_participants: 20, is_active: true, allow_camera: true, allow_microphone: true, is_official: true },
+      {
+        slug: 'accountability-room',
+        name: 'Accountability Department',
+        description: 'Bring something you need to finish. Camera on. Work quietly alongside other people and get it done.',
+        room_type: 'accountability',
+        max_participants: 20,
+        is_active: true,
+        allow_camera: true,
+        allow_microphone: true,
+        is_official: true,
+      },
     ])
   })
 

@@ -64,6 +64,9 @@ export function resolveRef(s: WorldState, ref: Ref): { title: string; subtitle: 
 export const formatPrice = (cents: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100)
 
+/** A course's price as learners see it: Free, $49, or $19/month for a membership. */
+export const coursePrice = (c: { price?: number; billing?: 'once' | 'monthly' }) => (c.price ? `${formatPrice(c.price)}${c.billing === 'monthly' ? '/month' : ''}` : 'Free')
+
 export const formatCount = (n: number) => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1).replace(/\.0$/, '')}k`

@@ -1,5 +1,5 @@
 /**
- * The shared world's tables (supabase/migrations/20260929120000_world.sql) and what this app may write to each.
+ * The shared world's tables (supabase/migrations/20260929120000_world.sql, *_pricing.sql) and what this app may write to each.
  * The database's row-level security is the real authority; this only keeps the app from asking for more.
  */
 
@@ -23,7 +23,7 @@ export interface TableSpec {
 /** In dependency order: creates run top to bottom, removals bottom to top. */
 export const TABLES = {
   profiles: { pk: ['id'], update: ['name', 'avatar', 'bio', 'location', 'headline', 'interests', 'skills', 'open_to'], public: true },
-  creator_plans: { pk: ['user_id'], insert: true, update: ['status', 'via', 'since', 'renews_at'], public: true },
+  member_plans: { pk: ['user_id', 'kind'], insert: true, update: ['quantity', 'status', 'via', 'since', 'renews_at'], public: true },
   follows: { pk: ['follower_id', 'followee_id'], insert: true, del: true, public: true },
   posts: { pk: ['id'], insert: true, update: ['body', 'image', 'link', 'location', 'poll', 'audience'], del: true, public: true, limit: { column: 'created_at', rows: 500 } },
   post_likes: { pk: ['post_id', 'user_id'], insert: true, del: true, public: true },
@@ -31,7 +31,7 @@ export const TABLES = {
   poll_votes: { pk: ['post_id', 'user_id'], insert: true, update: ['option_id'], del: true, public: true },
   saved_items: { pk: ['user_id', 'kind', 'ref_id'], insert: true, del: true },
   collections: { pk: ['id'], insert: true, update: ['title', 'items'], del: true },
-  courses: { pk: ['id'], insert: true, update: ['title', 'subtitle', 'description', 'image', 'kind', 'topic', 'price', 'stripe_link'], del: true, public: true },
+  courses: { pk: ['id'], insert: true, update: ['title', 'subtitle', 'description', 'image', 'kind', 'topic', 'price', 'billing', 'stripe_link'], del: true, public: true },
   course_lessons: { pk: ['id'], insert: true, update: ['position', 'title', 'minutes'], del: true, public: true },
   lesson_bodies: { pk: ['lesson_id'], insert: true, update: ['body'], del: true, public: true },
   course_purchases: { pk: ['id'], insert: true },

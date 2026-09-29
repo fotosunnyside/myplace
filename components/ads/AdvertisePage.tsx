@@ -75,8 +75,11 @@ export function AdvertisePage() {
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-deep">
           <Megaphone className="h-4 w-4" /> Advertise on PLACES
         </p>
-        <h1 className="mt-4 max-w-2xl font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.03]">One gentle banner per Place. Never a wall of ads.</h1>
-        <p className="mt-4 max-w-xl text-lg text-navy-soft">Each Place shows a single sponsored mini banner at a time, so your business gets real attention — and the world stays calm.</p>
+        <h1 className="mt-4 max-w-2xl font-serif text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.03]">Get Seen in PLACES</h1>
+        <p className="mt-4 max-w-xl text-lg text-navy-soft">
+          Sponsored placements start at {formatPrice(ADS.week.price)}/week. Each Place shows one sponsored placement at a time, so your business gets real attention — and the world stays calm.
+        </p>
+        <p className="mt-2 text-sm text-muted">Sponsored placements are separate from PLACES Pass and other plans.</p>
       </section>
 
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-[1.3fr_1fr]">
@@ -99,7 +102,7 @@ export function AdvertisePage() {
                   className={cn('rounded-2xl border p-4 text-left transition', f.plan === p ? 'border-teal bg-teal-wash/60' : 'border-line bg-white hover:border-teal/40')}
                 >
                   <span className="block text-2xl font-semibold">{formatPrice(ADS[p].price)}</span>
-                  <span className="text-sm text-muted">for 1 {p}</span>
+                  <span className="text-sm text-muted">for {ADS[p].label}</span>
                 </button>
               ))}
             </div>

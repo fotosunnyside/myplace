@@ -39,6 +39,36 @@ export function AdCard({ ad, className, preview }: { ad: Pick<Ad, 'business' | '
   )
 }
 
+/** The same booked ad, shaped like a post, for the YourPlace feed. */
+export function SponsoredPost({ ad }: { ad: Pick<Ad, 'business' | 'headline' | 'image' | 'url'> }) {
+  return (
+    <a
+      href={ad.url}
+      target="_blank"
+      rel="sponsored noopener noreferrer"
+      aria-label={`Sponsored post: ${ad.business} — ${ad.headline}`}
+      className="group block overflow-hidden rounded-card border border-line/70 bg-white shadow-soft transition hover:shadow-lift"
+    >
+      <span className="flex items-center justify-between gap-3 px-4 pb-3 pt-3.5">
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold text-navy">{ad.business}</span>
+          <span className="text-xs text-muted">Sponsored</span>
+        </span>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-teal-deep transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+      </span>
+      {ad.image && (
+        <span className="relative block aspect-[16/9] bg-sand">
+          <Picture src={ad.image} alt="" fill sizes="(min-width: 768px) 640px, 100vw" className="object-cover" />
+        </span>
+      )}
+      <span className="flex items-center justify-between gap-3 px-4 py-3">
+        <span className="min-w-0 truncate font-medium text-navy">{ad.headline}</span>
+        <span className="shrink-0 rounded-full bg-teal-wash px-3 py-1 text-xs font-semibold text-teal-deep">Visit</span>
+      </span>
+    </a>
+  )
+}
+
 function HouseAd({ district, className }: { district: DistrictId; className?: string }) {
   return (
     <Link
@@ -50,7 +80,7 @@ function HouseAd({ district, className }: { district: DistrictId; className?: st
       </span>
       <span className="min-w-0 flex-1">
         <span className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-muted">Sponsored spot available</span>
-        <span className="block truncate text-sm text-navy">Put your business here — one gentle banner per Place, from {formatPrice(ADS.week.price)}/week.</span>
+        <span className="block truncate text-sm text-navy">Promote in PLACES — sponsored placements start at {formatPrice(ADS.week.price)}/week.</span>
       </span>
       <span className="hidden shrink-0 text-sm font-medium text-teal-deep sm:inline">Advertise →</span>
     </Link>

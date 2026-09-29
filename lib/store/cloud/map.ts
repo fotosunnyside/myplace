@@ -5,13 +5,14 @@ import type {
   Contract,
   Course,
   CoursePurchase,
-  CreatorPlan,
   Discussion,
   ID,
+  MemberPlan,
   Notification,
   Opportunity,
   Order,
   Person,
+  PlanKind,
   Post,
   Product,
   RefKind,
@@ -55,7 +56,12 @@ export interface CloudIdentity {
 }
 
 export function fromCloud(d: CloudData, me: CloudIdentity | null): WorldState {
-  const plans = new Map(d.creator_plans.map((r) => [str(r.user_id), { status: r.status, via: r.via, since: ms(r.since), renewsAt: ms(r.renews_at) } as CreatorPlan]))
+  const plans = new Map<ID, Partial<Record<PlanKind, MemberPlan>>>()
+  for (const r of d.member_plans) {
+    const p = plans.get(str(r.user_id)) ?? {}
+    p[r.kind as PlanKind] = { status: r.status as MemberPlan['status'], via: r.via as MemberPlan['via'], since: ms(r.since), renewsAt: ms(r.renews_at), quantity: Number(r.quantity) || 1 }
+    plans.set(str(r.user_id), p)
+  }
 
   const toPerson = (r: Row): Person => ({
     id: str(r.id),
@@ -71,7 +77,7 @@ export function fromCloud(d: CloudData, me: CloudIdentity | null): WorldState {
     baseFollowers: Number(r.base_followers) || undefined,
     baseFollowing: Number(r.base_following) || undefined,
     member: r.user_id !== null && r.user_id !== undefined,
-    creatorPlan: plans.get(str(r.id)),
+    plans: plans.get(str(r.id)),
   })
 
   const myRow = me ? d.profiles.find((r) => r.id === me.id) : undefined
@@ -123,6 +129,7 @@ export function fromCloud(d: CloudData, me: CloudIdentity | null): WorldState {
       baseMembers: Number(r.base_members) || 0,
       startsAt: r.starts_at ? ms(r.starts_at) : undefined,
       price: Number(r.price) || undefined,
+      billing: r.billing === 'monthly' && Number(r.price) ? ('monthly' as const) : undefined,
       stripeLink: opt(r.stripe_link as string),
       createdAt: ms(r.created_at),
     }))
@@ -164,7 +171,7 @@ export function fromCloud(d: CloudData, me: CloudIdentity | null): WorldState {
   const orders: Order[] = d.orders
     .map((r) => ({ id: str(r.id), productId: str(r.product_id), buyerId: str(r.buyer_id), total: Number(r.total), fee: Number(r.fee) || undefined, via: r.via as Order['via'], createdAt: ms(r.created_at) }))
     .sort((a, b) => b.createdAt - a.createdAt)
-  const coursePurchases: CoursePurchase[] = d.course_purchases.map((r) => ({ id: str(r.id), courseId: str(r.course_id), buyerId: str(r.buyer_id), total: Number(r.total), via: r.via as CoursePurchase['via'], createdAt: ms(r.created_at) }))
+  const coursePurchases: CoursePurchase[] = d.course_purchases.map((r) => ({ id: str(r.id), courseId: str(r.course_id), buyerId: str(r.buyer_id), total: Number(r.total), fee: Number(r.fee) || undefined, via: r.via as CoursePurchase['via'], createdAt: ms(r.created_at) }))
 
   const opportunities: Opportunity[] = d.opportunities
     .map((r) => ({
@@ -332,9 +339,8 @@ export function ownedRows(s: WorldState): RowSet {
       skills: account.skills ?? [],
       open_to: account.openTo ?? [],
     })
-    if (account.creatorPlan) {
-      const p = account.creatorPlan
-      put('creator_plans', { user_id: me, status: p.status, via: p.via, since: iso(p.since), renews_at: iso(p.renewsAt) })
+    for (const [kind, p] of Object.entries(account.plans ?? {})) {
+      if (p) put('member_plans', { user_id: me, kind, quantity: p.quantity, status: p.status, via: p.via, since: iso(p.since), renews_at: iso(p.renewsAt) })
     }
   }
 
@@ -375,6 +381,7 @@ export function ownedRows(s: WorldState): RowSet {
       kind: c.kind,
       topic: c.topic,
       price: c.price ?? null,
+      billing: c.billing ?? 'once',
       stripe_link: nul(c.stripeLink),
       created_at: iso(c.createdAt),
     })

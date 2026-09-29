@@ -15,7 +15,7 @@ import {
   sendMessage,
   signOut,
   signUp,
-  subscribeCreator,
+  startPlan,
   toggleFollow,
   toggleLike,
   toggleSave,
@@ -123,10 +123,22 @@ describe('what actions write to the shared world', () => {
     ])
   })
 
-  it('publishes a course with its lessons after starting a creator plan', () => {
-    const s = subscribeCreator(base(), 'test', NOW)
-    const made = createCourse(s, { title: 'Engines', subtitle: '', description: 'd', image: '/c.webp', topic: 'Tech', kind: 'course', price: 0, lessons: [{ title: 'One', minutes: 5, body: 'Hi' }, { title: 'Two', minutes: 5, body: 'There' }] }, NOW)
-    expect(summary(changes(s, made.state))).toEqual(['insert courses ×1', 'insert course_lessons ×2', 'insert lesson_bodies ×2'])
+  it('starts a plan, then publishes a course with its lessons', () => {
+    const b = base()
+    const plan = startPlan(b, 'create', 'test', NOW)
+    expect(changes(b, plan)).toEqual([
+      {
+        kind: 'insert',
+        table: 'member_plans',
+        rows: [{ user_id: meOf(plan), kind: 'create', quantity: 1, status: 'active', via: 'test', since: new Date(NOW).toISOString(), renews_at: new Date(NOW + 30 * 86_400_000).toISOString() }],
+      },
+    ])
+    // Another course on Create raises the quantity, nothing else.
+    expect(summary(changes(plan, startPlan(plan, 'create', 'test', NOW)))).toEqual(['update member_plans'])
+    const made = createCourse(plan, { title: 'Engines', subtitle: '', description: 'd', image: '/c.webp', topic: 'Tech', kind: 'course', price: 1900, billing: 'monthly', lessons: [{ title: 'One', minutes: 5, body: 'Hi' }, { title: 'Two', minutes: 5, body: 'There' }] }, NOW)
+    const ops = changes(plan, made.state)
+    expect(summary(ops)).toEqual(['insert courses ×1', 'insert course_lessons ×2', 'insert lesson_bodies ×2'])
+    expect(ops[0].kind === 'insert' && ops[0].rows[0]).toMatchObject({ price: 1900, billing: 'monthly' })
   })
 
   it('never turns signing out (or in) into deletes', () => {
@@ -153,7 +165,10 @@ describe('reading the shared world', () => {
       { id: 'u1', user_id: 'u1', username: 'ada', name: 'Ada', avatar: '', bio: '', location: '', headline: '', interests: [], skills: [], open_to: ['jobs'], joined_at: '2026-01-01T00:00:00Z' },
       { id: 'p_maya', user_id: null, username: 'mayamakes', name: 'Maya', avatar: '', bio: '', location: '', headline: '', interests: [], skills: [], open_to: [], joined_at: '2026-01-01T00:00:00Z', base_followers: 3400 },
     ]
-    d.creator_plans = [{ user_id: 'u1', status: 'active', via: 'test', since: '2026-01-01T00:00:00Z', renews_at: '2026-02-01T00:00:00Z' }]
+    d.member_plans = [
+      { user_id: 'u1', kind: 'pass', quantity: 1, status: 'active', via: 'test', since: '2026-01-01T00:00:00Z', renews_at: '2026-02-01T00:00:00Z' },
+      { user_id: 'u1', kind: 'create', quantity: 2, status: 'canceled', via: 'test', since: '2026-01-01T00:00:00Z', renews_at: '2026-02-01T00:00:00Z' },
+    ]
     d.posts = [{ id: 'post_1', author_id: 'p_maya', body: 'Hi', image: null, link: null, location: null, poll: [{ id: 'o1', label: 'A' }], audience: 'public', created_at: '2026-09-29T10:00:00Z', base_likes: 5, base_comments: 0 }]
     d.post_likes = [{ post_id: 'post_1', user_id: 'u1' }]
     d.post_comments = [{ id: 'c1', post_id: 'post_1', author_id: 'u1', body: 'Nice', created_at: '2026-09-29T11:00:00Z' }]
@@ -162,7 +177,7 @@ describe('reading the shared world', () => {
 
     const w = fromCloud(d, { id: 'u1', email: 'ada@example.com' })
     expect(w.accountId).toBe('u1')
-    expect(w.accounts[0]).toMatchObject({ email: 'ada@example.com', openTo: ['jobs'], creatorPlan: { status: 'active' }, member: true })
+    expect(w.accounts[0]).toMatchObject({ email: 'ada@example.com', openTo: ['jobs'], plans: { pass: { status: 'active' }, create: { status: 'canceled', quantity: 2 } }, member: true })
     expect(w.people).toEqual([expect.objectContaining({ id: 'p_maya', member: false, baseFollowers: 3400 })])
     expect(w.posts[0]).toMatchObject({ likes: ['u1'], baseLikes: 5, comments: [{ id: 'c1', body: 'Nice' }], poll: [{ id: 'o1', label: 'A', votes: ['u1'] }] })
     expect(w.notifications.u1).toHaveLength(1)

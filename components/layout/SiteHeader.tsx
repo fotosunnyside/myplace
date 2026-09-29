@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, DoorOpen, GraduationCap, LogOut, Megaphone, Receipt, Settings, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { Bell, BookOpen, Briefcase, GraduationCap, LogOut, Megaphone, MessageSquare, Settings, ShieldCheck, ShoppingBag, Sparkles, UserRound, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Logo } from '@/components/brand/Logo'
 import { SearchField } from '@/components/search/SearchField'
@@ -15,11 +15,12 @@ import { openAuth, openCreate } from '@/lib/ui'
 import { useAdminStatus } from '@/lib/backend/auth'
 import { cn } from '@/lib/cn'
 
+/** The four Places, named the same way everywhere. */
 export const primaryNav = [
-  { label: 'Explore', href: '/explore' },
-  { label: 'Communities', href: '/mindplace' },
-  { label: 'Opportunities', href: '/workplace' },
-  { label: 'Messages', href: '/messages' },
+  { label: 'YourPlace', href: '/yourplace' },
+  { label: 'MindPlace', href: '/mindplace' },
+  { label: 'MarketPlace', href: '/marketplace' },
+  { label: 'WorkPlace', href: '/workplace' },
 ]
 
 const norm = (p: string) => p.replace(/\/$/, '') || '/'
@@ -55,7 +56,7 @@ export function SiteHeader() {
 
         <nav aria-label="Primary" className="ml-auto hidden items-center gap-1 lg:ml-[5vw] lg:flex xl:ml-[8vw]">
           {primaryNav.map((item) => {
-            const active = pathname === item.href
+            const active = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
               <Link
                 key={item.href}
@@ -64,9 +65,6 @@ export function SiteHeader() {
                 className={cn('relative rounded-full px-4 py-2 text-[0.92rem] font-medium text-navy transition-colors hover:bg-navy/[0.04]', active && 'text-teal-deep')}
               >
                 {item.label}
-                {item.href === '/messages' && unreadMsgs > 0 && (
-                  <span className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.65rem] font-semibold text-white">{unreadMsgs}</span>
-                )}
                 {active && <span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-teal" />}
               </Link>
             )
@@ -74,14 +72,18 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 lg:gap-4">
-          <SearchField placeholder="Search people, places, products..." className="w-[clamp(200px,22vw,340px)]" />
+          <SearchField placeholder="Search people, places, products..." className="w-[clamp(180px,18vw,300px)]" />
           {!ready ? (
             <span className="h-11 w-[150px]" aria-hidden />
           ) : account ? (
             <>
-              <Button size="sm" variant="soft" onClick={() => openCreate('menu')} className="hidden !h-10 !px-4 xl:inline-flex">
+              <Button size="sm" variant="soft" onClick={() => openCreate('menu')} className="hidden !h-10 shrink-0 whitespace-nowrap !px-4 xl:inline-flex">
                 + Create
               </Button>
+              <Link href="/messages" aria-label={`Messages${unreadMsgs ? `, ${unreadMsgs} unread` : ''}`} className="relative grid h-10 w-10 place-items-center rounded-full text-navy transition hover:bg-navy/5">
+                <MessageSquare className="h-[21px] w-[21px]" strokeWidth={1.6} />
+                {unreadMsgs > 0 && <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-coral px-1 text-[0.6rem] font-semibold text-white ring-2 ring-cream">{unreadMsgs}</span>}
+              </Link>
               <Link href="/notifications" aria-label={`Notifications${unread ? `, ${unread} new` : ''}`} className="relative grid h-10 w-10 place-items-center rounded-full text-navy transition hover:bg-navy/5">
                 <Bell className="h-[22px] w-[22px]" strokeWidth={1.6} />
                 {unread > 0 && <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-coral px-1 text-[0.6rem] font-semibold text-white ring-2 ring-cream">{unread}</span>}
@@ -123,11 +125,13 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
   }, [open])
 
   const items = [
-    { label: 'Your profile', href: '/yourplace', icon: UserRound },
-    { label: 'MyPlace · Live spaces', href: '/myplace', icon: DoorOpen },
-    { label: 'Orders & applications', href: '/activity', icon: Receipt },
+    { label: 'YourPlace', note: 'Your profile', href: '/yourplace', icon: UserRound },
+    { label: 'Orders', note: 'MarketPlace', href: '/activity/?tab=orders', icon: ShoppingBag },
+    { label: 'Applications', note: 'WorkPlace', href: '/activity/?tab=applications', icon: Briefcase },
+    { label: 'Learning', note: 'MindPlace', href: '/activity/?tab=learning', icon: BookOpen },
     { label: 'Workrooms', href: '/workrooms', icon: Users },
     { label: 'Teach on PLACES', href: '/teach', icon: GraduationCap },
+    { label: 'PLACES Pass', note: 'Pricing', href: '/pricing', icon: Sparkles },
     { label: 'Advertise', href: '/advertise', icon: Megaphone },
     { label: 'Settings', href: '/settings', icon: Settings },
     ...(admin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
@@ -139,11 +143,12 @@ function AccountMenu({ name, avatar }: { name: string; avatar: string }) {
         <Avatar src={avatar} alt="" name={name} size={46} ring />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-60 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-lift">
+        <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-72overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-lift">
           <p className="px-3 pb-2 pt-2 text-sm font-semibold">{name}</p>
-          {items.map(({ label, href, icon: Icon }) => (
+          {items.map(({ label, note, href, icon: Icon }) => (
             <Link key={href} role="menuitem" href={href} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-ivory">
               <Icon className="h-4 w-4 text-teal-deep" /> {label}
+              {note && <span className="ml-auto text-xs text-muted">{note}</span>}
             </Link>
           ))}
           <button

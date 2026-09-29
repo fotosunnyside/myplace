@@ -9,7 +9,8 @@ import { ProfileView } from '@/components/profile/ProfileView'
 import { SearchField } from '@/components/search/SearchField'
 import { ChipPicker, ImagePicker, TextArea, TextField } from '@/components/ui/fields'
 import { Avatar, Button, ButtonLink, Card, SectionHeader, Tag } from '@/components/ui/primitives'
-import { deleteAccount, markAllNotificationsRead, signOut, updateProfile } from '@/lib/store/actions'
+import { activePlan, deleteAccount, markAllNotificationsRead, signOut, updateProfile } from '@/lib/store/actions'
+import { PLANS } from '@/lib/config'
 import { leaveRoomAndSignOut } from '@/lib/spaces/signout'
 import { perform, useHydrated, useWorld } from '@/lib/store/hooks'
 import { enrollmentsOf, formatPrice, me, person, personByUsername, search } from '@/lib/store/selectors'
@@ -181,11 +182,19 @@ export function SearchPage() {
 /* ------------------------------------------------------------------ */
 
 const ACTIVITY_TABS = ['Orders', 'Applications', 'Learning', 'Selling & hiring'] as const
+type ActivityTab = (typeof ACTIVITY_TABS)[number]
+/** `?tab=` values, so the account menu can open Orders (MarketPlace) and Applications (WorkPlace) directly. */
+const TAB_PARAM: Record<string, ActivityTab> = { orders: 'Orders', applications: 'Applications', learning: 'Learning', selling: 'Selling & hiring' }
 
 export function ActivityPage() {
+  const param = useSearchParams().get('tab') ?? ''
+  return <Activity key={param} initial={TAB_PARAM[param] ?? 'Orders'} />
+}
+
+function Activity({ initial }: { initial: ActivityTab }) {
   const world = useWorld()
   const ready = useHydrated()
-  const [tab, setTab] = useState<(typeof ACTIVITY_TABS)[number]>('Orders')
+  const [tab, setTab] = useState<ActivityTab>(initial)
   const acc = me(world)
 
   if (ready && !acc)
@@ -218,7 +227,7 @@ export function ActivityPage() {
         </div>
         <div className="text-right">
           <p className="font-semibold">{formatPrice(total)}</p>
-          {fee ? <p className="text-xs text-muted">1% admin fee {formatPrice(fee)}</p> : null}
+          {fee ? <p className="text-xs text-muted">1% platform fee {formatPrice(fee)}</p> : null}
           <Tag tone={via === 'stripe' ? 'teal' : 'neutral'}>{via === 'stripe' ? 'Paid via Stripe' : 'Test order'}</Tag>
         </div>
       </Card>
@@ -300,6 +309,7 @@ export function ActivityPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">{formatPrice(p.total)}</p>
+                      {p.fee ? <p className="text-xs text-muted">5% platform fee {formatPrice(p.fee)}</p> : null}
                       <Tag tone={p.via === 'stripe' ? 'teal' : 'neutral'}>{p.via === 'stripe' ? 'Paid via Stripe' : 'Test purchase'}</Tag>
                     </div>
                   </Card>
@@ -433,7 +443,22 @@ function SettingsForm({ acc }: { acc: Account }) {
         </Button>
       </form>
 
-      <Card className="mt-8 grid gap-4 p-6">
+      <Card className="mt-8 flex flex-wrap items-center justify-between gap-4 p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Plan</h2>
+          <p className="text-sm text-muted">
+            {(() => {
+              const active = (['pass', 'create', 'host'] as const).filter((k) => activePlan(world, k)).map((k) => PLANS[k].name)
+              return active.length ? `Active: ${active.join(', ')}.` : 'PLACES Free — everything you need to explore and belong.'
+            })()}
+          </p>
+        </div>
+        <ButtonLink href="/pricing" variant="outline" size="sm">
+          {activePlan(world, 'pass') ? 'Manage plans' : 'See PLACES Pass'}
+        </ButtonLink>
+      </Card>
+
+      <Card className="mt-4 grid gap-4 p-6">
         <h2 className="text-lg font-semibold">Account & data</h2>
         <p className="text-sm text-muted">
           Signed in as <span className="font-medium text-navy">@{acc.username}</span> ({acc.email}).{' '}
