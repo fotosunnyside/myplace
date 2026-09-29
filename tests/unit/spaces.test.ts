@@ -6,7 +6,8 @@ import { PREVIEW_SPACES } from '@/lib/spaces/preview'
 import { featuredSpaces, hostedBy, peopleHere, roomBackground, roomBehaviour, slugFor, validateNewSpace, validatePatch, checkBackgroundFile } from '@/lib/spaces/rooms'
 import { patchToRow, spaceErrorCode, spaceFromRow, type SpaceRow } from '@/lib/spaces/rows'
 import { RoomSession } from '@/lib/spaces/session'
-import { SpaceError, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
+import { SpaceError, type RoomMessage, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
+import { distance, LEAVE_DISTANCE, MAX_CONNECTIONS, nearby, startingSpot, step, TALK_DISTANCE } from '@/lib/spaces/proximity'
 
 const [townHall, accountability] = PREVIEW_SPACES
 
@@ -131,6 +132,10 @@ describe('bubble layout', () => {
 /* ------------------------------------------------------------------ */
 
 class FakeMedia implements MediaProvider {
+  peers: string[] = []
+  setPeers(ids: string[]) {
+    this.peers = ids
+  }
   name = 'fake'
   carriesRemoteMedia = false
   needsToken = false
@@ -179,8 +184,8 @@ class FakeMedia implements MediaProvider {
 
 function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
   const room = new Map<string, SpacePresence>()
-  for (let i = 0; i < (opts.others ?? 0); i++) room.set(`o${i}`, { userId: `o${i}`, displayName: `Other ${i}`, avatarUrl: null, cameraOn: false, micOn: false, zone: null, role: 'participant', joinedAt: `0${i}`, lastSeenAt: '' })
-  const state = { online: true, admitted: true, closed: false, capacity: opts.capacity ?? 20, touches: [] as { cameraOn: boolean; micOn: boolean }[], left: 0 }
+  for (let i = 0; i < (opts.others ?? 0); i++) room.set(`o${i}`, { userId: `o${i}`, displayName: `Other ${i}`, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: 0.5, y: 0.5 + i * 0.05, role: 'participant', joinedAt: `0${i}`, lastSeenAt: '' })
+  const state = { online: true, admitted: true, closed: false, capacity: opts.capacity ?? 20, touches: [] as { cameraOn: boolean; micOn: boolean }[], left: 0, moves: [] as { x: number; y: number }[], chat: [] as ((m: RoomMessage) => void)[] }
   const b: SpacesBackend = {
     mode: 'preview',
     listSpaces: async () => PREVIEW_SPACES,
@@ -194,7 +199,7 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
       if (!state.online) throw new SpaceError('network', 'offline')
       if (state.closed) throw new SpaceError('closed', 'This room is currently closed.')
       if (!room.has('me') && room.size >= state.capacity) throw new SpaceError('full', 'This room is currently full.')
-      room.set('me', { userId: 'me', displayName: me.name, avatarUrl: null, cameraOn: false, micOn: false, zone: null, role: 'participant', joinedAt: '9', lastSeenAt: '' })
+      room.set('me', { userId: 'me', displayName: me.name, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: room.get('me')?.x ?? null, y: room.get('me')?.y ?? null, role: 'participant', joinedAt: '9', lastSeenAt: '' })
       state.admitted = true
     },
     async touch(_id, s) {
@@ -206,6 +211,22 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
       state.left++
       room.delete('me')
     },
+    async move(_id, x, y) {
+      const mine = room.get('me')
+      if (mine) room.set('me', { ...mine, x, y })
+      state.moves.push({ x, y })
+    },
+    messages: async () => [],
+    onMessage: (_id, cb) => {
+      state.chat.push(cb)
+      return () => {}
+    },
+    async sendMessage(_id, body) {
+      if (!room.has('me')) throw new SpaceError('forbidden', 'Enter the room to chat.')
+      return { id: `m${state.moves.length}${body.length}`, userId: 'me', name: 'Josie Rivers', body, createdAt: '' }
+    },
+    signal: async () => {},
+    onSignal: () => () => {},
     mediaToken: async () => null,
     createSpace: async () => {
       throw new SpaceError('forbidden', 'no')
@@ -217,6 +238,49 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
   }
   return { backend: b, state, room }
 }
+
+describe('talking distance', () => {
+  it('connects the people near you, nearest first, and lets go with a little slack', () => {
+    const me = { x: 0.5, y: 0.5 }
+    const others = [
+      { id: 'far', x: 0.95, y: 0.9 },
+      { id: 'near', x: 0.55, y: 0.5 },
+      { id: 'edge', x: 0.5, y: 0.5 + (TALK_DISTANCE + LEAVE_DISTANCE) / 2 },
+      { id: 'unplaced', x: null, y: null },
+    ]
+    expect(nearby(me, others)).toEqual(['near'])
+    // Already talking to someone at the edge: stay connected until they're past the leaving distance.
+    expect(nearby(me, others, new Set(['edge']))).toEqual(['near', 'edge'])
+    expect(nearby(null, others)).toEqual([])
+  })
+
+  it('agrees whoever measures, and caps the number of connections', () => {
+    const a = { x: 0.2, y: 0.3 }
+    const b = { x: 0.4, y: 0.6 }
+    expect(distance(a, b)).toBeCloseTo(distance(b, a))
+    const crowd = Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, x: 0.5 + (i % 5) * 0.01, y: 0.5 + Math.floor(i / 5) * 0.01 }))
+    expect(nearby({ x: 0.5, y: 0.5 }, crowd)).toHaveLength(MAX_CONNECTIONS)
+  })
+
+  it('places newcomers near the others without sitting on anyone', () => {
+    const first = startingSpot([])
+    expect(first).toEqual({ x: 0.5, y: 0.52 })
+    const taken = [first]
+    for (let i = 0; i < 6; i++) taken.push(startingSpot(taken))
+    for (let i = 1; i < taken.length; i++) {
+      const gaps = taken.slice(0, i).map((t) => distance(t, taken[i]))
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0.28) // side by side, not on top of anyone
+      expect(Math.min(...gaps)).toBeLessThan(TALK_DISTANCE) // and close enough to talk to someone
+    }
+    expect(distance(first, taken[1])).toBeLessThan(TALK_DISTANCE)
+  })
+
+  it('walks with the arrow keys and stays inside the room', () => {
+    expect(step({ x: 0.5, y: 0.5 }, 'ArrowUp')).toEqual({ x: 0.5, y: 0.46 })
+    expect(step({ x: 0.94, y: 0.5 }, 'ArrowRight')!.x).toBe(0.94)
+    expect(step({ x: 0.5, y: 0.5 }, 'Enter')).toBeNull()
+  })
+})
 
 describe('room session', () => {
   let media: FakeMedia
@@ -377,5 +441,44 @@ describe('rooms members host', () => {
   it('names the official rooms the way PLACES describes them', () => {
     expect(accountability.name).toBe('Accountability Department')
     expect(townHall.description).toMatch(/Meet people/)
+  })
+})
+
+describe('room session, together', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 0))
+  const make = (backend: SpacesBackend, media: FakeMedia) => new RoomSession({ backend, createMedia: () => media, watchSpace: () => () => {} })
+
+  it('stands newcomers near the others and connects them to whoever is within talking distance', async () => {
+    const { backend, state, room } = fakeBackend({ others: 2 })
+    const media = new FakeMedia()
+    const s = make(backend, media)
+    await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
+    await settle()
+    await settle()
+    expect(state.moves).toHaveLength(1)
+    const mine = room.get('me')!
+    expect(mine.x).not.toBeNull()
+    expect(s.get().nearby.sort()).toEqual(['o0', 'o1'])
+    expect(media.peers.sort()).toEqual(['o0', 'o1'])
+
+    // Walk away to the far corner: the connections close.
+    await s.move({ x: 0.02, y: 0.02 })
+    expect(s.get().nearby).toEqual([])
+    expect(media.peers).toEqual([])
+    expect(state.moves.at(-1)).toEqual({ x: 0.02, y: 0.02 })
+    await s.leave()
+  })
+
+  it('shows chat as it arrives, once each', async () => {
+    const { backend, state } = fakeBackend()
+    const s = make(backend, new FakeMedia())
+    await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
+    await s.say('Hello room')
+    const incoming: RoomMessage = { id: 'x1', userId: 'o0', name: 'Other', body: 'Hi Josie', createdAt: '' }
+    state.chat.forEach((cb) => cb(incoming))
+    state.chat.forEach((cb) => cb(incoming))
+    expect(s.get().messages.map((m) => m.body)).toEqual(['Hello room', 'Hi Josie'])
+    await s.leave()
+    expect(s.get().messages).toEqual([])
   })
 })

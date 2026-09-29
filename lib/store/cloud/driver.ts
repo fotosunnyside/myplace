@@ -83,7 +83,7 @@ const friendly = (table: TableName, e: { code?: string; message?: string }) => {
   if (e.code === 'P0001') return m
   if (e.code === '42501' || /row-level security/i.test(m)) {
     if (table === 'courses') return 'Choose Create in MindPlace or PLACES Pass to publish.'
-    if (table === 'opportunities') return 'Posting is included with PLACES Pass — or pay the $2 posting fee.'
+    if (table === 'opportunities') return 'Posting is included with PLACES Pass — or pay the $3 posting fee.'
     if (table === 'enrollments') return 'Buy this course to start learning.'
     return 'You don’t have permission to do that.'
   }

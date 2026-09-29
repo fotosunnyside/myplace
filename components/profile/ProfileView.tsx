@@ -19,13 +19,13 @@ import type { Person, Ref, WorldState } from '@/lib/types'
 import { openAuth } from '@/lib/ui'
 import { cn } from '@/lib/cn'
 
-const OWN_TABS = ['Profile', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
+const OWN_TABS = ['Feed', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
 const OTHER_TABS = ['Posts', 'Friends'] as const
 /** YourPlace itself also holds Virtual Places (MyPlace used to). */
-const HOME_TABS = ['Profile', 'Virtual Places', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
+const HOME_TABS = ['Feed', 'Virtual Places', 'Posts', 'Friends', 'Collections', 'Saved', 'AI Assistant'] as const
 type Tab = (typeof HOME_TABS)[number]
 /** `?tab=` values for links straight to a tab. */
-const TAB_PARAM: Partial<Record<string, Tab>> = { places: 'Virtual Places', posts: 'Posts', friends: 'Friends', collections: 'Collections', saved: 'Saved' }
+const TAB_PARAM: Partial<Record<string, Tab>> = { feed: 'Feed', places: 'Virtual Places', posts: 'Posts', friends: 'Friends', collections: 'Collections', saved: 'Saved' }
 
 /** Follows `?tab=` (e.g. /yourplace/?tab=places), including when a link changes it while YourPlace is open. */
 function TabFromUrl({ onTab }: { onTab: (t: Tab) => void }) {
@@ -62,7 +62,7 @@ export function ProfileView({ p, own, compact = false, preview = false, home = f
         {tabs.map((t) => (
           <button
             key={t}
-            onClick={() => (preview && t !== 'Profile' && t !== 'Posts' && t !== 'Virtual Places' ? openAuth({ mode: 'join', reason: 'Join PLACES FOR US to build your own home.' }) : setTab(t))}
+            onClick={() => (preview && t !== 'Feed' && t !== 'Posts' && t !== 'Virtual Places' ? openAuth({ mode: 'join', reason: 'Join PLACES FOR US to build your own home.' }) : setTab(t))}
             aria-current={tab === t ? 'page' : undefined}
             className={cn('relative shrink-0 py-2.5 text-[0.62rem] font-medium transition-colors @3xl:py-4 @3xl:text-[0.95rem]', tab === t ? 'font-semibold text-navy' : 'text-navy-soft hover:text-navy')}
           >
@@ -76,7 +76,7 @@ export function ProfileView({ p, own, compact = false, preview = false, home = f
         <ProfileSummary p={p} own={own} compact={compact} rooms={home} />
         <div className="min-w-0">
           {tab === 'Virtual Places' && <VirtualPlacesPanel />}
-          {tab === 'Profile' && <Feed p={p} own={own || preview} compact={compact} mode="home" sponsored={home} />}
+          {tab === 'Feed' && <Feed p={p} own={own || preview} compact={compact} mode="home" sponsored={home} />}
           {tab === 'Posts' && <Feed p={p} own={own} compact={compact} mode="mine" />}
           {tab === 'Friends' && <Friends p={p} own={own} />}
           {tab === 'Collections' && own && <Collections />}

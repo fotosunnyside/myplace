@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/primitives'
 import { useBackendSession } from '@/lib/backend/auth'
 import { backendConfigured } from '@/lib/backend/client'
 import { layoutBubbles } from '@/lib/spaces/layout'
+import { clampSpot, ROOM_ASPECT, step, TALK_DISTANCE, type Spot } from '@/lib/spaces/proximity'
 import { devicePrefs, roomSession, saveDevicePrefs, useRoomSession } from '@/lib/spaces/live'
 import { peopleHere, roomBehaviour, roomHref, PLACES_HREF } from '@/lib/spaces/rooms'
 import type { RoomSessionState } from '@/lib/spaces/session'
@@ -21,6 +22,8 @@ import { openAuth } from '@/lib/ui'
 import { dropInAsGuest, openToGuests, useGuest } from '@/lib/spaces/guest'
 import { cn } from '@/lib/cn'
 import { ParticipantBubble, type BubblePerson } from './ParticipantBubble'
+import { PersonCard } from './PersonCard'
+import { BubbleComposer, ChatPanel, SpeechBubble, saveChatMode, savedChatMode, useFreshMessages, type ChatMode } from './RoomChat'
 import { deviceHint, RoomControls } from './RoomControls'
 import { RoomBackdrop } from './RoomBackdrop'
 import { RoomStatus } from './SpaceCard'
@@ -496,12 +499,23 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
   const me = useMe()
   const [stageRef, stage] = useStageSize()
   const [focused, setFocused] = useState<string | null>(null)
+  // Your circle while you drag it (committed to the room when you let go).
+  const [drag, setDrag] = useState<Spot | null>(null)
+  const dragged = useRef(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMode, setChatModeState] = useState<ChatMode>(() => savedChatMode())
+  const setChatMode = (m: ChatMode) => {
+    saveChatMode(m)
+    setChatModeState(m)
+  }
+  const [chatSeenAt, setChatSeenAt] = useState(() => Date.now())
+  const fresh = useFreshMessages(session.messages)
   // Greet once per visit, not every time you come back from another Place.
   const [welcome, setWelcome] = useState(() => Boolean(space.settings.welcome) && !greeted.has(`${space.id}:${session.me}`))
   useEffect(() => {
     greeted.add(`${space.id}:${session.me}`)
   }, [space.id, session.me])
-  const [mediaNote, setMediaNote] = useState(!session.carriesRemoteMedia)
+  const [mediaNote, setMediaNote] = useState(true)
 
   useEffect(() => {
     if (!welcome) return
@@ -514,7 +528,7 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     const remote = new Map(session.remote.map((r) => [r.identity, r]))
     const roster = session.roster.some((r) => r.userId === session.me)
       ? session.roster
-      : [...(session.me ? [{ userId: session.me, displayName: me?.name ?? 'You', avatarUrl: me?.avatar ?? null, cameraOn: false, micOn: false, zone: null, role: 'participant' as const, joinedAt: '', lastSeenAt: '' }] : []), ...session.roster]
+      : [...(session.me ? [{ userId: session.me, displayName: me?.name ?? 'You', avatarUrl: me?.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: null, y: null, role: 'participant' as const, joinedAt: '', lastSeenAt: '' }] : []), ...session.roster]
     const list = roster.map<BubblePerson>((p) => {
       if (p.userId === session.me) {
         const l = session.local
@@ -536,8 +550,9 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
         name: p.displayName,
         avatar: p.avatarUrl,
         isLocal: false,
-        cameraOn: m ? m.cameraOn : p.cameraOn,
-        micOn: m ? m.micOn : p.micOn,
+        // Presence says whether their camera/mic is on; the connection (when near) carries the picture and sound.
+        cameraOn: p.cameraOn,
+        micOn: p.micOn,
         speaking: !!m?.speaking,
         videoStream: m?.videoStream ?? null,
         audioStream: m?.audioStream ?? null,
@@ -555,7 +570,82 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     stage.h,
     { minSize: phone ? 60 : 76, maxSize: phone ? (people.length <= 2 ? 150 : 128) : 184 },
   )
-  const spot = new Map(layout.spots.map((s) => [s.id, s]))
+  const size = layout.size
+  // Until someone has a spot of their own, they stand where the crowd layout puts them.
+  const fallback = new Map(layout.spots.map((s) => [s.id, s]))
+  const posOf = (id: string): Spot | null => {
+    if (id === session.me && drag) return drag
+    const r = session.roster.find((x) => x.userId === id)
+    return r && r.x != null && r.y != null ? { x: r.x, y: r.y } : null
+  }
+  const pixel = (id: string) => {
+    const p = posOf(id)
+    if (p) return { x: Math.min(stage.w - size / 2, Math.max(size / 2, p.x * stage.w)), y: Math.min(stage.h - size / 2 - 22, Math.max(size / 2, p.y * stage.h)) }
+    const f = fallback.get(id)
+    return f ? { x: f.x, y: Math.min(f.y, stage.h - size / 2 - 22) } : null
+  }
+  const toSpot = (clientX: number, clientY: number): Spot => {
+    const r = stageRef.current!.getBoundingClientRect()
+    return clampSpot({ x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height })
+  }
+  const inside = session.phase === 'in-room'
+  const mePx = session.me ? pixel(session.me) : null
+
+  /** Drag your own circle to walk; a tap still opens it. */
+  const startDrag = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0 || !inside) return
+    const el = e.currentTarget
+    const sx = e.clientX
+    const sy = e.clientY
+    let moved = false
+    dragged.current = false
+    el.setPointerCapture(e.pointerId)
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return
+      moved = true
+      setDrag(toSpot(ev.clientX, ev.clientY))
+    }
+    const up = (ev: PointerEvent) => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', up)
+      el.removeEventListener('pointercancel', up)
+      if (!moved) return
+      // Swallow the click that ends this drag (it fires right after), and nothing after it.
+      dragged.current = true
+      setTimeout(() => (dragged.current = false), 0)
+      void roomSession.move(toSpot(ev.clientX, ev.clientY))
+      setDrag(null)
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', up)
+    el.addEventListener('pointercancel', up)
+  }
+  const walkKeys = (e: React.KeyboardEvent) => {
+    const cur = session.me ? posOf(session.me) : null
+    const next = cur && step(cur, e.key)
+    if (!next) return
+    e.preventDefault()
+    void roomSession.move(next)
+  }
+  const goTalk = (id: string) => {
+    const them = posOf(id)
+    const mine = session.me ? posOf(session.me) : null
+    if (!them) return
+    setFocused(null)
+    // Stand right beside them: a circle's width (plus a little) to whichever side you're coming from.
+    const dx = stage.w ? (size + 24) / stage.w : 0.12
+    void roomSession.move(clampSpot({ x: them.x + ((mine?.x ?? 0) < them.x ? -dx : dx), y: them.y }))
+  }
+
+  // Speech bubbles: the latest fresh message from each person.
+  const saying = new Map<string, string>()
+  if (chatMode === 'bubbles') for (const m of fresh) saying.set(m.userId, m.body)
+  // In bubbles mode messages show up beside people; in chat mode, new ones wait behind the Chat button.
+  const unread = chatOpen || chatMode === 'bubbles' ? 0 : session.messages.filter((m) => m.userId !== session.me && (m.receivedAt ?? 0) > chatSeenAt).length
+  const closeChat = () => {
+    setChatSeenAt(Date.now())
+    setChatOpen(false)
+  }
 
   const notices: { key: string; text: string }[] = []
   if (session.camera === 'requesting') notices.push({ key: 'cam-req', text: 'Requesting camera permission…' })
@@ -591,41 +681,91 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
         </AnimatePresence>
       </div>
 
-      {/* The people */}
-      <div ref={stageRef} className="absolute inset-x-0 bottom-[calc(112px+env(safe-area-inset-bottom))] top-[calc(84px+env(safe-area-inset-top))] z-10 overflow-y-auto overflow-x-hidden md:bottom-[124px] md:top-[108px]" onClick={(e) => e.target === e.currentTarget && setFocused(null)}>
-        <div className="relative" style={{ height: layout.height }}>
-          <AnimatePresence>
-            {people.map((p) => {
-              const s = spot.get(p.id)
-              if (!s) return null
-              return (
-                <motion.div
-                  key={p.id}
-                  className="absolute"
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1, left: s.x - s.size / 2, top: s.y - s.size / 2 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  transition={{ type: 'spring', damping: 26, stiffness: 180 }}
-                  style={{ zIndex: focused === p.id ? 5 : 1 }}
-                >
-                  <ParticipantBubble person={p} size={s.size} focused={focused === p.id} onFocus={() => setFocused(focused === p.id ? null : p.id)} />
-                </motion.div>
-              )
-            })}
-          </AnimatePresence>
-        </div>
+      {/* The people — drag your circle (or tap the floor) to walk around */}
+      <div
+        ref={stageRef}
+        data-testid="room-floor"
+        className="absolute inset-x-0 bottom-[calc(112px+env(safe-area-inset-bottom))] top-[calc(84px+env(safe-area-inset-top))] z-10 overflow-hidden md:bottom-[124px] md:top-[108px]"
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (focused) return setFocused(null)
+          if (inside) void roomSession.move(toSpot(e.clientX, e.clientY))
+        }}
+      >
+        {/* Talking distance: anyone inside this circle can see and hear you. */}
+        {session.carriesRemoteMedia && mePx && stage.w > 0 && (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute rounded-full border-2 border-dashed border-white/45 bg-white/[0.06]"
+            style={{ width: 2 * (TALK_DISTANCE / ROOM_ASPECT) * stage.w, height: 2 * TALK_DISTANCE * stage.h }}
+            animate={{ left: mePx.x - (TALK_DISTANCE / ROOM_ASPECT) * stage.w, top: mePx.y - TALK_DISTANCE * stage.h }}
+            transition={drag ? { duration: 0 } : { type: 'spring', damping: 26, stiffness: 180 }}
+            data-testid="talk-ring"
+          />
+        )}
+        <AnimatePresence>
+          {people.map((p) => {
+            const px = pixel(p.id)
+            if (!px) return null
+            const said = saying.get(p.id)
+            const low = px.y > stage.h * 0.55
+            return (
+              <motion.div
+                key={p.id}
+                className={cn('absolute', p.isLocal && inside && 'cursor-grab touch-none active:cursor-grabbing')}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1, left: px.x - size / 2, top: px.y - size / 2 }}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={p.isLocal && drag ? { duration: 0 } : { type: 'spring', damping: 26, stiffness: 180 }}
+                style={{ zIndex: focused === p.id ? 6 : said ? 5 : p.isLocal ? 3 : 1 }}
+                onPointerDown={p.isLocal ? startDrag : undefined}
+                data-testid={p.isLocal ? 'my-circle' : undefined}
+              >
+                <ParticipantBubble
+                  person={{ ...p, nearby: session.nearby.includes(p.id) }}
+                  size={size}
+                  focused={focused === p.id}
+                  onFocus={() => {
+                    if (p.isLocal && dragged.current) return
+                    setFocused(focused === p.id ? null : p.id)
+                  }}
+                  onKeyDown={p.isLocal ? walkKeys : undefined}
+                />
+                <AnimatePresence>{said && <SpeechBubble key={said} text={said} side={px.x > stage.w * 0.62 ? 'left' : 'right'} />}</AnimatePresence>
+                {focused === p.id && !p.isLocal && (
+                  <PersonCard
+                    id={p.id}
+                    name={p.name}
+                    nearby={session.nearby.includes(p.id)}
+                    onGoTalk={() => goTalk(p.id)}
+                    className={cn('absolute left-1/2 -translate-x-1/2', low ? 'bottom-full mb-2' : 'top-full mt-2')}
+                  />
+                )}
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
 
-      {/* Honest about media until a live provider is connected */}
-      {mediaNote && !session.carriesRemoteMedia && (
+      <AnimatePresence>{chatOpen && chatMode === 'panel' && <ChatPanel messages={session.messages} me={session.me} mode={chatMode} onMode={setChatMode} onClose={closeChat} />}</AnimatePresence>
+      {chatOpen && chatMode === 'bubbles' && <BubbleComposer mode={chatMode} onMode={setChatMode} onClose={closeChat} />}
+
+      {/* How the room works (live media), or honest about media when it can't connect */}
+      {mediaNote && !chatOpen && (
         <div className="absolute inset-x-0 bottom-[calc(118px+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-[132px]">
           <div className="flex max-w-xl items-start gap-2.5 rounded-2xl bg-white/88 px-4 py-2.5 text-[0.78rem] leading-snug text-navy-soft shadow-soft backdrop-blur-xl" data-testid="media-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-deep" />
-            <p>
-              <span className="font-medium text-navy">Live video between people isn’t switched on yet.</span>{' '}
-              <span className="hidden sm:inline">You can see who’s here, and your own camera and mic work — others will see and hear you once PLACES connects its live video service.</span>
-              <span className="sm:hidden">You can see who’s here; your camera and mic work on your side for now.</span>
-            </p>
+            {session.carriesRemoteMedia ? (
+              <p>
+                <span className="font-medium text-navy">Walk up to people to talk.</span> Drag your circle — or tap the floor — to move. Anyone inside your dashed circle can see and hear you.
+              </p>
+            ) : (
+              <p>
+                <span className="font-medium text-navy">Live video between people isn’t switched on here.</span>{' '}
+                <span className="hidden sm:inline">You can see who’s here and chat, and your own camera and mic work on your side.</span>
+                <span className="sm:hidden">You can see who’s here and chat.</span>
+              </p>
+            )}
             <button onClick={() => setMediaNote(false)} aria-label="Dismiss" className="shrink-0 rounded-full p-0.5 text-muted hover:text-navy">
               <X className="h-4 w-4" />
             </button>
@@ -658,6 +798,12 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
               void roomSession.toggleMic()
             }}
             onLeave={onLeave}
+            chatOpen={chatOpen}
+            unread={unread}
+            onChat={() => {
+              setChatSeenAt(Date.now())
+              setChatOpen((v) => !v)
+            }}
           />
         </div>
       </div>

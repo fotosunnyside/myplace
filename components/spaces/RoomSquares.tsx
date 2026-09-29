@@ -33,16 +33,17 @@ export function RoomSquares({ className }: { className?: string }) {
 
   return (
     <section aria-label="Official Virtual Places" className={cn('grid gap-2 @3xl:gap-3', className)}>
-      <p className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-muted @3xl:text-xs">Virtual Places · free to join</p>
+      {/* The call to action comes first, so it's seen before the rooms. */}
+      <Link
+        href={CREATE_PLACE_HREF}
+        className="flex items-center justify-center gap-1.5 rounded-full bg-teal px-3 py-2.5 text-center text-[0.62rem] font-semibold text-white shadow-[0_10px_24px_-12px_rgb(18_170_168/0.8)] transition hover:bg-teal-deep @3xl:py-3.5 @3xl:text-sm"
+      >
+        <Plus className="h-3.5 w-3.5 @3xl:h-4 @3xl:w-4" /> Create a Virtual Place
+      </Link>
+      <p className="mt-1 text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-muted @3xl:text-xs">Public Virtual Places · free to join</p>
       {list.map((s) => (
         <RoomSquare key={s.id} space={s} count={occupancy ? (occupancy[s.id] ?? 0) : null} />
       ))}
-      <Link
-        href={CREATE_PLACE_HREF}
-        className="flex items-center justify-center gap-1 rounded-card border border-dashed border-teal/40 bg-teal-wash/40 px-2 py-2.5 text-center text-[0.6rem] font-semibold text-teal-deep transition hover:bg-teal-wash @3xl:py-3.5 @3xl:text-sm"
-      >
-        <Plus className="h-3 w-3 @3xl:h-4 @3xl:w-4" /> Create a Virtual Place
-      </Link>
       <Link href={PLACES_HREF} className="text-[0.6rem] font-medium text-teal-deep hover:underline @3xl:text-sm">
         All Virtual Places →
       </Link>

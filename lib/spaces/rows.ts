@@ -1,4 +1,4 @@
-import { ROOM_TYPES, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
+import { ROOM_TYPES, type RoomMessage, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
 
 /** Database row shapes (public.virtual_spaces / public.virtual_space_participants). */
 export interface SpaceRow {
@@ -35,6 +35,8 @@ export interface PresenceRow {
   camera_on: boolean
   mic_on: boolean
   zone: string | null
+  pos_x?: number | null
+  pos_y?: number | null
   role: SpacePresence['role']
   joined_at: string
   last_seen_at: string
@@ -111,6 +113,8 @@ export const presenceFromRow = (r: PresenceRow): SpacePresence => ({
   cameraOn: r.camera_on,
   micOn: r.mic_on,
   zone: r.zone,
+  x: r.pos_x ?? null,
+  y: r.pos_y ?? null,
   role: r.role,
   joinedAt: r.joined_at,
   lastSeenAt: r.last_seen_at,
@@ -134,3 +138,14 @@ export function spaceErrorCode(err: { code?: string; message?: string } | null |
   if (/fetch|network|failed to fetch|load failed/i.test(err?.message ?? '')) return 'network' as const
   return 'unknown' as const
 }
+
+export interface MessageRow {
+  id: string
+  space_id: string
+  user_id: string
+  display_name: string
+  body: string
+  created_at: string
+}
+
+export const messageFromRow = (r: MessageRow): RoomMessage => ({ id: r.id, userId: r.user_id, name: r.display_name, body: r.body, createdAt: r.created_at })

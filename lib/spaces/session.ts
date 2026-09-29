@@ -1,7 +1,8 @@
 import { HEARTBEAT_MS, type SpacesBackend } from './backend'
 import { DeviceMediaProvider } from './media/device'
 import { MediaDeviceError, type MediaParticipant, type MediaProvider } from './media/types'
-import { SPACE_MESSAGES, SpaceError, type SpaceErrorCode, type SpacePresence, type VirtualSpace } from './types'
+import { nearby, startingSpot, type Spot } from './proximity'
+import { SPACE_MESSAGES, SpaceError, type RoomMessage, type SpaceErrorCode, type SpacePresence, type VirtualSpace } from './types'
 
 /**
  * A person's visit to one Virtual Space: admission, presence heartbeat, media and recovery.
@@ -38,6 +39,10 @@ export interface RoomSessionState {
   /** False until a live video provider is connected. */
   carriesRemoteMedia: boolean
   me: string | null
+  /** The room's chat, oldest first. */
+  messages: RoomMessage[]
+  /** People close enough to see and hear (person-to-person connections). */
+  nearby: string[]
 }
 
 export interface SessionDeps {
@@ -47,7 +52,7 @@ export interface SessionDeps {
   watchSpace: (spaceId: string, cb: (space: VirtualSpace | null) => void) => () => void
 }
 
-const IDLE: RoomSessionState = { phase: 'idle', space: null, camera: 'off', mic: 'off', roster: [], local: null, remote: [], carriesRemoteMedia: false, me: null }
+const IDLE: RoomSessionState = { phase: 'idle', space: null, camera: 'off', mic: 'off', roster: [], local: null, remote: [], carriesRemoteMedia: false, me: null, messages: [], nearby: [] }
 const GIVE_UP_AFTER_MS = 60_000
 const ROSTER_POLL_MS = 10_000
 
@@ -70,6 +75,8 @@ export class RoomSession {
   private touching: Promise<void> | null = null
   private touchAgain = false
   private profile: { name: string; avatar?: string } = { name: 'Someone' }
+  /** Where you last stood, so a reconnect puts you back in the same spot. */
+  private lastSpot: Spot | null = null
 
   constructor(private deps: SessionDeps) {}
 
@@ -95,6 +102,7 @@ export class RoomSession {
 
     const attempt = ++this.attempt
     this.profile = me
+    this.lastSpot = null
     this.wantCamera = prefs.camera
     this.wantMic = prefs.mic
     this.set({ ...IDLE, phase: 'joining', space, camera: space.allowCamera ? 'off' : 'blocked', mic: space.allowMicrophone ? 'off' : 'blocked', me: this.deps.backend.identity() })
@@ -118,7 +126,7 @@ export class RoomSession {
       const token = media.needsToken ? await this.deps.backend.mediaToken(space.id) : null
       if (media.needsToken && !token) media = this.fallbackMedia(media)
       if (attempt !== this.attempt) return
-      await media.connectToRoom({ spaceId: space.id, identity: this.state.me!, name: me.name, token })
+      await media.connectToRoom({ spaceId: space.id, identity: this.state.me!, name: me.name, token, signals: this.signalsFor(space.id) })
     } catch (e) {
       if (attempt !== this.attempt) return
       // Presence still works without media; stay in the room with on-device media.
@@ -133,7 +141,8 @@ export class RoomSession {
     this.set({ phase: 'in-room', carriesRemoteMedia: media.carriesRemoteMedia })
     this.syncMedia()
     this.startHeartbeat(space.id)
-    this.refreshRoster()
+    this.startChat(space.id)
+    this.refreshRoster(true)
 
     if (this.wantCamera && this.state.space?.allowCamera) await this.setCamera(true)
     if (attempt === this.attempt && this.wantMic && this.state.space?.allowMicrophone) await this.setMic(true)
@@ -181,6 +190,27 @@ export class RoomSession {
 
   async toggleMic() {
     await this.setMic(this.state.mic !== 'on')
+  }
+
+  /** Walk your circle to a spot (0–1 across and down the room). */
+  async move(to: Spot) {
+    const space = this.state.space
+    const me = this.state.me
+    if (!space || !me || this.state.phase !== 'in-room') return
+    const x = Math.min(1, Math.max(0, to.x))
+    const y = Math.min(1, Math.max(0, to.y))
+    this.lastSpot = { x, y }
+    this.set({ roster: this.state.roster.map((p) => (p.userId === me ? { ...p, x, y } : p)) })
+    this.updatePeers()
+    await this.deps.backend.move(space.id, x, y).catch(() => {})
+  }
+
+  /** Say something in the room's chat. Throws SpaceError when it can't be sent. */
+  async say(body: string) {
+    const space = this.state.space
+    if (!space || !body.trim()) return
+    const m = await this.deps.backend.sendMessage(space.id, body)
+    this.addMessage(m)
   }
 
   async setCamera(on: boolean) {
@@ -232,7 +262,7 @@ export class RoomSession {
     const media = this.media
     this.media = null
     media?.disconnectFromRoom().catch(() => {})
-    this.set({ phase: endPhase[code] ?? 'error', message, local: null, remote: [], roster: [], camera: 'off', mic: 'off' })
+    this.set({ phase: endPhase[code] ?? 'error', message, local: null, remote: [], roster: [], camera: 'off', mic: 'off', messages: [], nearby: [] })
   }
 
   private teardown() {
@@ -275,13 +305,62 @@ export class RoomSession {
     this.cleanups.push(() => clearInterval(poll))
   }
 
-  private refreshRoster() {
+  /** `place`: after entering, stand somewhere free near the others if you have no spot yet. */
+  private refreshRoster(place = false) {
     const space = this.state.space
     if (!space) return
     this.deps.backend
       .roster(space.id)
-      .then((roster) => this.state.space?.id === space.id && this.active && this.set({ roster }))
+      .then((roster) => {
+        if (this.state.space?.id !== space.id || !this.active) return
+        // Keep your own spot while a move is on its way to the backend.
+        const mine = this.state.roster.find((p) => p.userId === this.state.me)
+        const next = roster.map((p) => (p.userId === this.state.me && mine?.x != null && p.x == null ? { ...p, x: mine.x, y: mine.y } : p))
+        this.set({ roster: next })
+        this.updatePeers()
+        const me = next.find((p) => p.userId === this.state.me)
+        if (place && me && me.x == null) {
+          void this.move(this.lastSpot ?? startingSpot(next.filter((p) => p.userId !== this.state.me && p.x != null).map((p) => ({ x: p.x!, y: p.y! }))))
+        }
+      })
       .catch(() => {})
+  }
+
+  /** Connect to whoever is within talking distance; let go of whoever walked away. */
+  private updatePeers() {
+    const me = this.state.roster.find((p) => p.userId === this.state.me)
+    const ids = nearby(
+      me && me.x != null && me.y != null ? { x: me.x, y: me.y } : null,
+      this.state.roster.filter((p) => p.userId !== this.state.me).map((p) => ({ id: p.userId, x: p.x, y: p.y })),
+      new Set(this.state.nearby),
+    )
+    if (ids.join() !== this.state.nearby.join()) this.set({ nearby: ids })
+    this.media?.setPeers?.(ids)
+  }
+
+  private signalsFor(spaceId: string) {
+    const backend = this.deps.backend
+    return {
+      send: (to: string, kind: Parameters<typeof backend.signal>[2], payload: unknown) => backend.signal(spaceId, to, kind, payload),
+      subscribe: (cb: Parameters<typeof backend.onSignal>[1]) => backend.onSignal(spaceId, cb),
+    }
+  }
+
+  private startChat(spaceId: string) {
+    this.cleanups.push(this.deps.backend.onMessage(spaceId, (m) => this.addMessage(m)))
+    this.deps.backend
+      .messages(spaceId)
+      .then((list) => {
+        if (this.state.space?.id !== spaceId) return
+        const known = new Set(this.state.messages.map((m) => m.id))
+        this.set({ messages: [...list.filter((m) => !known.has(m.id)).map((m) => ({ ...m, receivedAt: 0 })), ...this.state.messages].slice(-100) })
+      })
+      .catch(() => {})
+  }
+
+  private addMessage(m: RoomMessage) {
+    if (this.state.messages.some((x) => x.id === m.id)) return
+    this.set({ messages: [...this.state.messages, { ...m, receivedAt: Date.now() }].slice(-100) })
   }
 
   private startHeartbeat(spaceId: string) {
@@ -332,7 +411,11 @@ export class RoomSession {
         if (!space) return
         try {
           await this.deps.backend.join(space.id, this.profile)
-          if (attempt === this.attempt) this.set({ phase: 'in-room' })
+          if (attempt === this.attempt) {
+            this.set({ phase: 'in-room' })
+            this.refreshRoster(true)
+            this.touchAgain = true // a fresh place starts with camera/mic off: report them right away
+          }
         } catch (e) {
           if (attempt === this.attempt) this.fail(e)
         }

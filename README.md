@@ -100,14 +100,14 @@ appear only at the moment someone tries a paid action. All prices live in `lib/c
 | --- | --- | --- |
 | PLACES account | Free | |
 | Create in MindPlace | $7/month per published course or membership | + 5% PLACES fee on paid enrollments and membership payments |
-| Create Virtual Places | $10/month | Members' own rooms: up to 12 people and 5 rooms each for now (not unlimited video) |
+| Create Virtual Places | $11/month | Members' own rooms: up to 12 people and 5 rooms each for now (not unlimited video) |
 | **PLACES Pass** | **$21/month** | Publishing, **0%** course/membership fee, hosting, and WorkPlace posts included |
-| WorkPlace post | $2 per post | Included with PLACES Pass. Browsing and applying are free |
+| WorkPlace post | $3 per post | Included with PLACES Pass. Browsing and applying are free |
 | MarketPlace | Local sales free · 1% on shipped sales | The Pass does **not** remove the 1% |
 | Sponsored placement | $10/week per Place | Never included in the Pass. Also appears once in the YourPlace feed |
 
 Creators choose **free**, **one-time**, or **recurring monthly** pricing for each course or membership (more intervals can be added to
-`BILLING` in `components/detail/CourseEditor.tsx` later). Create + Host ($17) plus 5% equals the Pass at about $80/month of course
+`BILLING` in `components/detail/CourseEditor.tsx` later). Create + Host ($18) plus 5% equals the Pass at $60/month of course
 revenue — past that the Pass is cheaper, on purpose. Payment processing fees are separate from PLACES fees.
 
 To take real payments, create a **Stripe Payment Link** for each paid item, set its **After payment** redirect, and add it as a GitHub
@@ -118,8 +118,8 @@ runs in clearly labelled test mode.
 | --- | --- | --- | --- |
 | PLACES Pass | recurring $21/month | `…/myplace/pricing/?plan=started` | `PASS_LINK` |
 | Create in MindPlace | recurring $7/month (allow quantity) | `…/myplace/pricing/?plan=started` | `CREATE_PLAN_LINK` |
-| Create Virtual Places | recurring $10/month | `…/myplace/pricing/?plan=started` | `HOST_PLAN_LINK` |
-| Job post | one-time $2 | `…/myplace/workplace/opportunity/?publish=1` | `JOB_POST_LINK` |
+| Create Virtual Places | recurring $11/month | `…/myplace/pricing/?plan=started` | `HOST_PLAN_LINK` |
+| Job post | one-time $3 | `…/myplace/workplace/opportunity/?publish=1` | `JOB_POST_LINK` |
 | Sponsored placement | one-time $10 / $40 | `…/myplace/advertise/?paid=1` | `AD_WEEK_LINK`, `AD_MONTH_LINK` |
 
 Optional: turn on Stripe's **Customer portal** and add its login link as `STRIPE_PORTAL_LINK` so members can manage or cancel plans.
@@ -153,11 +153,20 @@ Accountability Department is open to guests with just a name (`/accountability`)
   (upload, preview on laptop and phone, focal point, replace, remove, reset). Saves go straight to the database and reach open
   rooms live. No code, commit or redeploy.
 
+**Walking, talking and chat.** Everyone has a circle they can drag (or tap the floor, or use the arrow keys) to move;
+positions live in `virtual_space_participants.pos_x/pos_y` (0–1) via `move_in_virtual_space()`. People within talking distance
+(the dashed circle, `lib/spaces/proximity.ts`) see and hear each other; walk away and the connection closes. Room chat
+(`virtual_space_messages`, via `send_virtual_space_message()`, last day kept) shows as speech bubbles beside people's circles
+or in a chat panel — each person picks. Tapping someone offers **Go talk**, **Add friend** (they appear in YourPlace → Friends),
+**Message** and their YourPlace.
+
 **Live video/audio.** Media never goes through Supabase. The UI talks only to the `MediaProvider` interface
-(`lib/spaces/media/types.ts`). Until a WebRTC provider is chosen, rooms use `DeviceMediaProvider`: presence, room state and
-your own camera/mic are fully working, and the room says plainly that video between people isn't on yet. To connect a provider:
-add an adapter in `lib/spaces/media/`, register it in `lib/spaces/media/index.ts`, set `MEDIA_PROVIDER`, and implement token
-minting in `supabase/functions/virtual-space-token` (provider secrets live only in that function's secrets).
+(`lib/spaces/media/types.ts`). Rooms use `P2PMediaProvider`: browsers near each other connect directly (WebRTC), introduced
+through `virtual_space_signals` (only people in the same room can send, only the recipient can read). It suits conversations
+of up to 8 people at a time. STUN finds a direct route on most networks; for strict networks add a TURN relay with the
+repository variable `ICE_SERVERS` (a JSON list of RTCIceServer, e.g. from a TURN provider). For big rooms or recording, add a
+media service (SFU) adapter in `lib/spaces/media/`, register it in `lib/spaces/media/index.ts`, set `MEDIA_PROVIDER`, and
+implement token minting in `supabase/functions/virtual-space-token` (provider secrets live only in that function's secrets).
 
 **Connecting the backend**
 1. Create a Supabase project, then run `supabase/migrations/*.sql` (SQL editor, or `supabase link && supabase db push`).
@@ -168,7 +177,7 @@ minting in `supabase/functions/virtual-space-token` (provider secrets live only 
 3. In GitHub → **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY`
    (public values). The next deploy connects; joining then asks for a password.
 4. In Supabase → **Authentication → URL Configuration**, add the site URL (`https://fotosunnyside.github.io/myplace/`).
-5. Later, for live video: `supabase functions deploy virtual-space-token`, `supabase secrets set MEDIA_PROVIDER=… MEDIA_API_KEY=…
+5. Later, for a media service instead of person-to-person video: `supabase functions deploy virtual-space-token`, `supabase secrets set MEDIA_PROVIDER=… MEDIA_API_KEY=…
    MEDIA_API_SECRET=… MEDIA_SERVER_URL=…`, and the repository variable `MEDIA_PROVIDER`.
 
 Without the backend (today's GitHub Pages build) the rooms run as an on-device preview: presence covers this device's tabs, and

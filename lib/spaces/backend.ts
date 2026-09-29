@@ -1,4 +1,4 @@
-import type { NewSpace, SpacePatch, SpacePresence, VirtualSpace } from './types'
+import type { NewSpace, RoomMessage, RoomSignal, SpacePatch, SpacePresence, VirtualSpace } from './types'
 
 /**
  * Everything Virtual Spaces needs from a backend. The UI and room session only talk to this,
@@ -26,6 +26,17 @@ export interface SpacesBackend {
   leave(spaceId: string, opts?: { keepalive?: boolean }): Promise<void>
   /** Whose presence this device reports (the signed-in identity), or null when not signed in. */
   identity(): string | null
+  /** Move your circle (0–1 across and down the room). */
+  move(spaceId: string, x: number, y: number): Promise<void>
+
+  /* Chat — only people in the room can read or write */
+  messages(spaceId: string): Promise<RoomMessage[]>
+  onMessage(spaceId: string, cb: (m: RoomMessage) => void): () => void
+  sendMessage(spaceId: string, body: string): Promise<RoomMessage>
+
+  /* Introductions between browsers for person-to-person video/audio */
+  signal(spaceId: string, to: string, kind: RoomSignal['kind'], payload: unknown): Promise<void>
+  onSignal(spaceId: string, cb: (s: RoomSignal) => void): () => void
 
   /* Media */
   /** Short-lived media-provider token for someone admitted to the room; null when no provider is configured. */

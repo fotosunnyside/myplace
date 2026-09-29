@@ -2,9 +2,9 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, getSupabase } from '@/lib/backend/client'
 import { getBackendSession } from '@/lib/backend/auth'
 import type { MediaToken, SpacesBackend } from './backend'
-import { patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type PresenceRow, type SpaceRow } from './rows'
+import { messageFromRow, patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type MessageRow, type PresenceRow, type SpaceRow } from './rows'
 import { slugFor } from './rooms'
-import { SPACE_MESSAGES, SpaceError, type SpacePatch } from './types'
+import { SPACE_MESSAGES, SpaceError, type RoomSignal, type SpacePatch } from './types'
 
 export const BACKGROUND_BUCKET = 'virtual-space-backgrounds'
 
@@ -123,6 +123,45 @@ export const cloudBackend: SpacesBackend = {
   identity() {
     const s = getBackendSession()
     return s.status === 'signed-in' ? s.userId : null
+  },
+
+  async move(spaceId, x, y) {
+    await call((sb) => sb.rpc('move_in_virtual_space', { p_space_id: spaceId, p_x: x, p_y: y }))
+  },
+
+  async messages(spaceId) {
+    const rows = await call<MessageRow[]>((sb) => sb.from('virtual_space_messages').select('*').eq('space_id', spaceId).order('created_at', { ascending: false }).limit(50))
+    return rows.reverse().map(messageFromRow)
+  },
+
+  onMessage(spaceId, cb) {
+    return listen(
+      (ch) => ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'virtual_space_messages', filter: `space_id=eq.${spaceId}` }, (e) => cb(messageFromRow(e.new as MessageRow))),
+      `chat:${spaceId}`,
+    )
+  },
+
+  async sendMessage(spaceId, body) {
+    const row = await call<MessageRow>((sb) => sb.rpc('send_virtual_space_message', { p_space_id: spaceId, p_body: body }))
+    return messageFromRow(row)
+  },
+
+  async signal(spaceId, to, kind, payload) {
+    await call((sb) => sb.rpc('send_virtual_space_signal', { p_space_id: spaceId, p_to: to, p_kind: kind, p_payload: payload ?? {} }))
+  },
+
+  onSignal(spaceId, cb) {
+    const me = cloudBackend.identity()
+    if (!me) return () => {}
+    type SignalRow = { space_id: string; from_user: string; kind: RoomSignal['kind']; payload: unknown }
+    return listen(
+      (ch) =>
+        ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'virtual_space_signals', filter: `to_user=eq.${me}` }, (e) => {
+          const r = e.new as SignalRow
+          if (r.space_id === spaceId) cb({ from: r.from_user, kind: r.kind, payload: r.payload })
+        }),
+      `signals:${spaceId}`,
+    )
   },
 
   async mediaToken(spaceId) {

@@ -1,4 +1,5 @@
 import type { MediaToken } from '../backend'
+import type { RoomSignal } from '../types'
 
 /**
  * The contract between Virtual Spaces and whatever carries live video/audio.
@@ -29,6 +30,13 @@ export interface ConnectOptions {
   name: string
   /** From the virtual-space-token Edge Function; null when the provider doesn't need one. */
   token: MediaToken | null
+  /** Messages to and from other people's browsers in the room (for person-to-person providers). */
+  signals?: SignalChannel
+}
+
+export interface SignalChannel {
+  send(to: string, kind: RoomSignal['kind'], payload: unknown): Promise<void>
+  subscribe(cb: (s: RoomSignal) => void): () => void
 }
 
 export type DeviceErrorKind = 'denied' | 'not-found' | 'in-use' | 'insecure' | 'unknown'
@@ -64,6 +72,9 @@ export interface MediaProvider {
 
   /** Called whenever state, participants or tracks change. */
   subscribe(listener: () => void): () => void
+
+  /** Person-to-person providers: the people you're close enough to see and hear. */
+  setPeers?(ids: string[]): void
 }
 
 /** Normalizes getUserMedia failures across browsers. */

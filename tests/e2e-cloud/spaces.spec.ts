@@ -42,7 +42,9 @@ const townHall = async () => (await service().from('virtual_spaces').select('*')
 test.afterAll(async () => {
   if (!URL || !SERVICE) return
   await service().from('virtual_spaces').update({ name: 'Town Hall', max_participants: 20, is_active: true, background_style: 'default', background_url: null, background_path: null }).eq('slug', 'town-hall')
-  await service().from('virtual_space_participants').delete().neq('user_id', '00000000-0000-0000-0000-000000000000')
+  // Only the official rooms these tests used — other test files run their own rooms at the same time.
+  const { data: official } = await service().from('virtual_spaces').select('id').eq('is_official', true)
+  await service().from('virtual_space_participants').delete().in('space_id', (official ?? []).map((r) => r.id))
 })
 
 test('admins change rooms without code; people see it live and the database enforces it', async ({ browser }) => {

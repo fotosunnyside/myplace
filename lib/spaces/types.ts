@@ -110,9 +110,30 @@ export interface SpacePresence {
   micOn: boolean
   /** Reserved for conversation circles inside a room. */
   zone: string | null
+  /** Where their circle stands, 0–1 across and down the room; null until they've been placed. */
+  x: number | null
+  y: number | null
   role: 'participant' | 'speaker' | 'moderator'
   joinedAt: string
   lastSeenAt: string
+}
+
+/** Something said in a room's chat. */
+export interface RoomMessage {
+  id: string
+  userId: string
+  name: string
+  body: string
+  createdAt: string
+  /** When it reached this device (ms); 0 for chat history from before you arrived. */
+  receivedAt?: number
+}
+
+/** A connection message between two browsers in the same room (person-to-person video/audio). */
+export interface RoomSignal {
+  from: string
+  kind: 'offer' | 'answer' | 'ice' | 'bye'
+  payload: unknown
 }
 
 export type SpaceErrorCode = 'signin' | 'missing' | 'closed' | 'full' | 'network' | 'forbidden' | 'unknown'

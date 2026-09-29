@@ -21,7 +21,7 @@ export const PLANS: Record<PlanKind, PlanInfo> = {
   /** Publish a course or membership in MindPlace — per published course or membership. */
   create: { kind: 'create', name: 'Create in MindPlace', price: 700, link: process.env.NEXT_PUBLIC_CREATE_PLAN_LINK ?? '' },
   /** Create your own Virtual Places (members' own rooms). */
-  host: { kind: 'host', name: 'Create Virtual Places', price: 1000, link: process.env.NEXT_PUBLIC_HOST_PLAN_LINK ?? '' },
+  host: { kind: 'host', name: 'Create Virtual Places', price: 1100, link: process.env.NEXT_PUBLIC_HOST_PLAN_LINK ?? '' },
   /** One Pass. Every Place. */
   pass: { kind: 'pass', name: 'PLACES Pass', price: 2100, link: process.env.NEXT_PUBLIC_PASS_LINK ?? '' },
 }
@@ -35,7 +35,7 @@ export const COURSE_FEE_LABEL = '5%'
 
 /** Post an opportunity in WorkPlace (included with PLACES Pass). */
 export const JOB_POST = {
-  price: 200, // cents per post
+  price: 300, // cents per post
   link: process.env.NEXT_PUBLIC_JOB_POST_LINK ?? '',
 }
 

@@ -54,7 +54,7 @@ export function PlanOptions({
   className,
 }: {
   context: PlanContext
-  /** For `job`, the caller runs the $2 posting flow. Defaults to starting the matching plan. */
+  /** For `job`, the caller runs the $3 posting flow. Defaults to starting the matching plan. */
   onSingle?: () => void
   /** Runs once the Pass is active (test mode) — e.g. carry on to the editor. */
   onPass?: () => void

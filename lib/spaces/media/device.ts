@@ -8,26 +8,26 @@ import { MediaDeviceError, deviceErrorKind, type ConnectOptions, type MediaConne
  * yours can't reach them. The room says so plainly.
  */
 export class DeviceMediaProvider implements MediaProvider {
-  readonly name = 'device'
-  readonly carriesRemoteMedia = false
-  readonly needsToken = false
+  readonly name: string = 'device'
+  carriesRemoteMedia = false
+  readonly needsToken: boolean = false
 
   state: MediaConnectionState = 'disconnected'
   localParticipant: MediaParticipant | null = null
-  readonly remoteParticipants: MediaParticipant[] = []
+  remoteParticipants: MediaParticipant[] = []
 
-  private video: MediaStreamTrack | null = null
-  private videoStream: MediaStream | null = null
-  private audio: MediaStreamTrack | null = null
+  protected video: MediaStreamTrack | null = null
+  protected videoStream: MediaStream | null = null
+  protected audio: MediaStreamTrack | null = null
   private listeners = new Set<() => void>()
-  private meter: { ctx: AudioContext; timer: ReturnType<typeof setInterval> } | null = null
+  protected meter: { ctx: AudioContext; timer: ReturnType<typeof setInterval> } | null = null
 
   subscribe(listener: () => void) {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
 
-  private emit() {
+  protected emit() {
     if (this.localParticipant) {
       this.localParticipant = {
         ...this.localParticipant,

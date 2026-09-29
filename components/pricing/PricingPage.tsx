@@ -40,6 +40,23 @@ const ROWS: [string, Cell, Cell][] = [
   ['Sponsored placements', `${money(ADS.week.price)}/week`, `${money(ADS.week.price)}/week`],
 ]
 
+/** A typical creator month bought one by one: hosting, two courses, two job posts — before the 5% course fee. */
+export const SEPARATE_EXAMPLE = { courses: 2, jobPosts: 2 }
+export const separateMonthly = (courses = SEPARATE_EXAMPLE.courses, jobPosts = SEPARATE_EXAMPLE.jobPosts) =>
+  PLANS.host.price + courses * PLANS.create.price + jobPosts * JOB_POST.price
+
+/** Makes the Pass's value plain: what the same month costs bought separately. */
+function SeparateTotal() {
+  const { courses, jobPosts } = SEPARATE_EXAMPLE
+  return (
+    <p className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85" data-testid="separate-total">
+      Bought separately, hosting ({money(PLANS.host.price)}) + {courses} courses ({money(PLANS.create.price)} each) + {jobPosts} job posts ({money(JOB_POST.price)} each) is{' '}
+      <span className="font-semibold text-white line-through decoration-white/60">{money(separateMonthly())}/month</span> plus {COURSE_FEE_LABEL} of every course sale. With the Pass:{' '}
+      <span className="font-semibold text-aqua">{money(PLANS.pass.price)}, 0% course fees</span>.
+    </p>
+  )
+}
+
 const cell = (c: Cell) => (typeof c === 'string' ? { text: c, strong: false } : { strong: false, ...c })
 
 export function PricingPage() {
@@ -96,6 +113,7 @@ export function PricingPage() {
             <span className="text-2xl text-white/70">/month</span>
           </p>
           <p className="mt-3 text-white/85">Create, teach, host and build across PLACES with one simple membership. Creator and professional privileges across PLACES.</p>
+          <SeparateTotal />
           <div className="mt-auto pt-6">
             {pass ? (
               <p className="flex items-center gap-2 text-sm font-medium text-aqua">

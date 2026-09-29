@@ -428,7 +428,7 @@ export function checkOpportunity(input: OpportunityInput) {
   if (input.description.trim().length < 20) throw new ActionError('Describe the opportunity in at least a sentence or two.')
 }
 
-/** `paidVia: 'pass'` — included with PLACES Pass instead of the $2 posting fee. */
+/** `paidVia: 'pass'` — included with PLACES Pass instead of the $3 posting fee. */
 export function createOpportunity(s: WorldState, input: OpportunityInput, now: number, paidVia: 'stripe' | 'test' | 'pass' = 'test'): { state: WorldState; id: ID } {
   const me = need(s)
   if (paidVia === 'pass' && !hasPass(s, me)) throw new ActionError('Posting is included with PLACES Pass. Start the Pass or pay the posting fee.')
