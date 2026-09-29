@@ -305,8 +305,18 @@ test('PLACES Pass: one Pass for posting, publishing and hosting — and the menu
   await visible(page, '+ Post an opportunity').click()
   await page.getByLabel('Title').fill('Studio assistant')
   await page.getByLabel('Description').fill('Help run our studio two mornings a week.')
+  await expect(page.getByLabel('Title')).toHaveValue('Studio assistant')
   await page.getByRole('button', { name: 'Post opportunity · Included with PLACES Pass' }).click()
-  await expect(page).toHaveURL(/opportunity\/\?id=opp_/)
+  await expect(page).toHaveURL(/opportunity\/\?id=opp_/).catch(async (e: Error) => {
+    // Seen failing on CI only: report what the page showed.
+    const seen = await page.evaluate(() => ({
+      toasts: [...document.querySelectorAll('[aria-live] > *')].map((n) => n.textContent),
+      dialogOpen: !!document.querySelector('[role=dialog]'),
+      title: (document.querySelector('[role=dialog] input') as HTMLInputElement | null)?.value,
+      buttons: [...document.querySelectorAll('[role=dialog] button[type=submit]')].map((b) => b.textContent),
+    }))
+    throw new Error(`${e.message}\nPage state: ${JSON.stringify(seen)}`)
+  })
 
   // So is hosting a space of your own.
   await page.goto('myplace/')
