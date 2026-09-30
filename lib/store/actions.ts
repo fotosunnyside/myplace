@@ -23,6 +23,7 @@ import type {
   Workroom,
 } from '@/lib/types'
 import { COURSE_FEE_RATE, STOREFRONTS } from '@/lib/config'
+import { firstUrl } from '@/supabase/functions/_shared/link-preview'
 
 export const uid = (prefix = 'id') =>
   `${prefix}_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 12) : Math.random().toString(36).slice(2, 14)}`
@@ -186,13 +187,15 @@ export function createPost(s: WorldState, input: PostInput, now: number): WorldS
   if (!body && !input.image && !input.video) throw new ActionError('Write something or add a photo or video.')
   if (input.pollOptions && options.length < 2) throw new ActionError('A poll needs at least two options.')
   if (input.link && !/^https?:\/\//i.test(input.link.trim())) throw new ActionError('Links should start with http:// or https://')
+  // A web address typed into the post becomes its link (shown as a preview of the site).
+  const link = input.link?.trim() || firstUrl(body) || undefined
   const post: Post = {
     id: uid('post'),
     authorId: me,
     body,
     image: input.image,
     video: input.video,
-    link: input.link?.trim() || undefined,
+    link,
     location: input.location?.trim() || undefined,
     poll: options.length ? options.map((label) => ({ id: uid('opt'), label, votes: [] })) : undefined,
     audience: input.audience ?? 'public',
