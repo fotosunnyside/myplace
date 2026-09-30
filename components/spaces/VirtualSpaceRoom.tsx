@@ -23,6 +23,10 @@ import { dropInAsGuest, openToGuests, useGuest } from '@/lib/spaces/guest'
 import { cn } from '@/lib/cn'
 import { ParticipantBubble, type BubblePerson } from './ParticipantBubble'
 import { PersonCard } from './PersonCard'
+import { MyBubbleCard } from './MyBubbleCard'
+import { MusicPanel, MusicPlayer } from './RoomMusic'
+import { activePlan } from '@/lib/store/actions'
+import { useWorld } from '@/lib/store/hooks'
 import { BubbleComposer, ChatPanel, SpeechBubble, saveChatMode, savedChatMode, useFreshMessages, type ChatMode } from './RoomChat'
 import { deviceHint, RoomControls } from './RoomControls'
 import { RoomBackdrop } from './RoomBackdrop'
@@ -509,6 +513,24 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     setChatModeState(m)
   }
   const [chatSeenAt, setChatSeenAt] = useState(() => Date.now())
+  // Your talking circle: shown unless you've turned it off (remembered on this device).
+  const [showRing, setShowRingState] = useState(() => {
+    try {
+      return localStorage.getItem('places:spaces:ring') !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const setShowRing = (on: boolean) => {
+    try {
+      localStorage.setItem('places:spaces:ring', on ? 'on' : 'off')
+    } catch {}
+    setShowRingState(on)
+  }
+  const [musicOpen, setMusicOpen] = useState(false)
+  const [listening, setListening] = useState(false)
+  const world = useWorld()
+  const canPlayMusic = !!activePlan(world, 'pass') || (!!session.me && space.createdBy === session.me)
   const fresh = useFreshMessages(session.messages)
   // Greet once per visit, not every time you come back from another Place.
   const [welcome, setWelcome] = useState(() => Boolean(space.settings.welcome) && !greeted.has(`${space.id}:${session.me}`))
@@ -528,7 +550,7 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     const remote = new Map(session.remote.map((r) => [r.identity, r]))
     const roster = session.roster.some((r) => r.userId === session.me)
       ? session.roster
-      : [...(session.me ? [{ userId: session.me, displayName: me?.name ?? 'You', avatarUrl: me?.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: null, y: null, role: 'participant' as const, joinedAt: '', lastSeenAt: '' }] : []), ...session.roster]
+      : [...(session.me ? [{ userId: session.me, displayName: me?.name ?? 'You', avatarUrl: me?.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: null, y: null, scale: null, status: null, role: 'participant' as const, joinedAt: '', lastSeenAt: '' }] : []), ...session.roster]
     const list = roster.map<BubblePerson>((p) => {
       if (p.userId === session.me) {
         const l = session.local
@@ -568,9 +590,12 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     people.map((p) => ({ id: p.id, zone: session.roster.find((r) => r.userId === p.id)?.zone ?? null })),
     stage.w,
     stage.h,
-    { minSize: phone ? 60 : 76, maxSize: phone ? (people.length <= 2 ? 150 : 128) : 184 },
+    { minSize: phone ? 52 : 64, maxSize: phone ? (people.length <= 2 ? 120 : 100) : 136 },
   )
   const size = layout.size
+  const presenceOf = (id: string) => session.roster.find((r) => r.userId === id)
+  // Each bubble at its owner's chosen size, where the room allows it.
+  const sizeOf = (id: string) => Math.round(size * (space.allowResize ? (presenceOf(id)?.scale ?? 1) : 1))
   // Until someone has a spot of their own, they stand where the crowd layout puts them.
   const fallback = new Map(layout.spots.map((s) => [s.id, s]))
   const posOf = (id: string): Spot | null => {
@@ -580,9 +605,10 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
   }
   const pixel = (id: string) => {
     const p = posOf(id)
-    if (p) return { x: Math.min(stage.w - size / 2, Math.max(size / 2, p.x * stage.w)), y: Math.min(stage.h - size / 2 - 22, Math.max(size / 2, p.y * stage.h)) }
+    const s = sizeOf(id)
+    if (p) return { x: Math.min(stage.w - s / 2, Math.max(s / 2, p.x * stage.w)), y: Math.min(stage.h - s / 2 - 22, Math.max(s / 2, p.y * stage.h)) }
     const f = fallback.get(id)
-    return f ? { x: f.x, y: Math.min(f.y, stage.h - size / 2 - 22) } : null
+    return f ? { x: f.x, y: Math.min(f.y, stage.h - s / 2 - 22) } : null
   }
   const toSpot = (clientX: number, clientY: number): Spot => {
     const r = stageRef.current!.getBoundingClientRect()
@@ -599,16 +625,17 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
     const sy = e.clientY
     let moved = false
     dragged.current = false
-    el.setPointerCapture(e.pointerId)
     const move = (ev: PointerEvent) => {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return
+      // Take over the pointer only once it's really a drag, so a plain tap still reaches the bubble (and opens its card).
+      if (!moved) el.setPointerCapture(ev.pointerId)
       moved = true
       setDrag(toSpot(ev.clientX, ev.clientY))
     }
     const up = (ev: PointerEvent) => {
-      el.removeEventListener('pointermove', move)
-      el.removeEventListener('pointerup', up)
-      el.removeEventListener('pointercancel', up)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
       if (!moved) return
       // Swallow the click that ends this drag (it fires right after), and nothing after it.
       dragged.current = true
@@ -616,9 +643,9 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
       void roomSession.move(toSpot(ev.clientX, ev.clientY))
       setDrag(null)
     }
-    el.addEventListener('pointermove', move)
-    el.addEventListener('pointerup', up)
-    el.addEventListener('pointercancel', up)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
   }
   const walkKeys = (e: React.KeyboardEvent) => {
     const cur = session.me ? posOf(session.me) : null
@@ -693,7 +720,7 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
         }}
       >
         {/* Talking distance: anyone inside this circle can see and hear you. */}
-        {session.carriesRemoteMedia && mePx && stage.w > 0 && (
+        {session.carriesRemoteMedia && showRing && mePx && stage.w > 0 && (
           <motion.div
             aria-hidden
             className="pointer-events-none absolute rounded-full border-2 border-dashed border-white/45 bg-white/[0.06]"
@@ -709,12 +736,14 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
             if (!px) return null
             const said = saying.get(p.id)
             const low = px.y > stage.h * 0.55
+            const s = sizeOf(p.id)
+            const presence = presenceOf(p.id)
             return (
               <motion.div
                 key={p.id}
                 className={cn('absolute', p.isLocal && inside && 'cursor-grab touch-none active:cursor-grabbing')}
                 initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1, left: px.x - size / 2, top: px.y - size / 2 }}
+                animate={{ opacity: 1, scale: 1, left: px.x - s / 2, top: px.y - s / 2 }}
                 exit={{ opacity: 0, scale: 0.6 }}
                 transition={p.isLocal && drag ? { duration: 0 } : { type: 'spring', damping: 26, stiffness: 180 }}
                 style={{ zIndex: focused === p.id ? 6 : said ? 5 : p.isLocal ? 3 : 1 }}
@@ -722,8 +751,8 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
                 data-testid={p.isLocal ? 'my-circle' : undefined}
               >
                 <ParticipantBubble
-                  person={{ ...p, nearby: session.nearby.includes(p.id) }}
-                  size={size}
+                  person={{ ...p, nearby: session.nearby.includes(p.id), status: presence?.status ?? null }}
+                  size={s}
                   focused={focused === p.id}
                   onFocus={() => {
                     if (p.isLocal && dragged.current) return
@@ -732,6 +761,18 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
                   onKeyDown={p.isLocal ? walkKeys : undefined}
                 />
                 <AnimatePresence>{said && <SpeechBubble key={said} text={said} side={px.x > stage.w * 0.62 ? 'left' : 'right'} />}</AnimatePresence>
+                {focused === p.id && p.isLocal && inside && (
+                  <MyBubbleCard
+                    scale={presence?.scale ?? 1}
+                    status={presence?.status ?? null}
+                    allowResize={space.allowResize}
+                    showRing={showRing}
+                    onScale={(scale) => void roomSession.setLook({ scale })}
+                    onStatus={(status) => void roomSession.setLook({ status })}
+                    onRing={setShowRing}
+                    className={cn('absolute left-1/2 -translate-x-1/2', low ? 'bottom-full mb-2' : 'top-full mt-2')}
+                  />
+                )}
                 {focused === p.id && !p.isLocal && (
                   <PersonCard
                     id={p.id}
@@ -747,11 +788,25 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
         </AnimatePresence>
       </div>
 
+      <AnimatePresence>
+        {musicOpen && (
+          <MusicPanel
+            music={session.music}
+            canPlay={canPlayMusic}
+            listening={listening}
+            onListen={setListening}
+            onPlay={(videoId, title) => roomSession.setMusic(videoId, title)}
+            onClose={() => setMusicOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+      {listening && session.music && <MusicPlayer music={session.music} onClose={() => setListening(false)} />}
+
       <AnimatePresence>{chatOpen && chatMode === 'panel' && <ChatPanel messages={session.messages} me={session.me} mode={chatMode} onMode={setChatMode} onClose={closeChat} />}</AnimatePresence>
       {chatOpen && chatMode === 'bubbles' && <BubbleComposer mode={chatMode} onMode={setChatMode} onClose={closeChat} />}
 
       {/* How the room works (live media), or honest about media when it can't connect */}
-      {mediaNote && !chatOpen && (
+      {mediaNote && !chatOpen && !musicOpen && !(listening && session.music) && (
         <div className="absolute inset-x-0 bottom-[calc(118px+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-[132px]">
           <div className="flex max-w-xl items-start gap-2.5 rounded-2xl bg-white/88 px-4 py-2.5 text-[0.78rem] leading-snug text-navy-soft shadow-soft backdrop-blur-xl" data-testid="media-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-deep" />
@@ -800,7 +855,14 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
             onLeave={onLeave}
             chatOpen={chatOpen}
             unread={unread}
+            musicOn={!!session.music}
+            musicOpen={musicOpen}
+            onMusic={() => {
+              setMusicOpen((v) => !v)
+              setChatOpen(false)
+            }}
             onChat={() => {
+              setMusicOpen(false)
               setChatSeenAt(Date.now())
               setChatOpen((v) => !v)
             }}

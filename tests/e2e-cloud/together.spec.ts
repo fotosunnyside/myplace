@@ -17,10 +17,15 @@ test.skip(!URL || !SERVICE || !ANON, 'Needs a running Supabase stack')
 const service = () => createClient(URL, SERVICE, { auth: { persistSession: false } })
 let roomId = ''
 
-async function makeUser(name: string) {
+async function makeUser(name: string, pass = false) {
   const email = `${name.toLowerCase()}-together-${run}@places.test`
-  const { error } = await service().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name, username: `${name.toLowerCase()}_t${run % 100000}` } })
+  const { data, error } = await service().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name, username: `${name.toLowerCase()}_t${run % 100000}` } })
   if (error) throw error
+  if (pass)
+    await service()
+      .from('member_plans')
+      .insert({ user_id: data.user.id, kind: 'pass', quantity: 1, status: 'active', via: 'test', renews_at: new Date(Date.now() + 30 * 864e5).toISOString() })
+      .throwOnError()
   return email
 }
 
@@ -75,7 +80,7 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   roomId = data!.id
 
   const ada = await signIn(browser, await makeUser('Ada'))
-  const ben = await signIn(browser, await makeUser('Ben'))
+  const ben = await signIn(browser, await makeUser('Ben', true))
   await enter(ada, slug)
   await enter(ben, slug)
 
@@ -131,4 +136,29 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   await card.getByRole('button', { name: 'Add friend' }).click()
   await expect(ben.getByRole('button', { name: 'Friends' })).toHaveAttribute('aria-pressed', 'true')
   await expect(ben.getByText(/Ada is in your friends/)).toBeVisible()
+  await ben.keyboard.press('Escape')
+
+  // Ben's own bubble: a status note Ada sees, a bigger bubble, and his talking circle hidden.
+  const benBubble = ada.getByRole('button', { name: /^Ben/ })
+  const before = (await benBubble.boundingBox())!.width
+  await ben.getByRole('button', { name: /^You:/ }).click()
+  const mine = ben.getByRole('dialog', { name: 'Your bubble' })
+  await mine.getByLabel('Status on your bubble').fill('Heads down until 3')
+  await mine.getByRole('button', { name: 'Set' }).click()
+  await expect(ada.getByTestId('bubble-status').filter({ hasText: 'Heads down until 3' })).toBeVisible()
+  await mine.getByRole('button', { name: 'Bigger bubble' }).click()
+  await mine.getByRole('button', { name: 'Bigger bubble' }).click()
+  await expect.poll(async () => (await benBubble.boundingBox())!.width, { timeout: 15_000 }).toBeGreaterThan(before * 1.2)
+  await expect(ben.getByTestId('talk-ring')).toBeVisible()
+  await mine.getByRole('switch', { name: 'Show my talking circle' }).uncheck()
+  await expect(ben.getByTestId('talk-ring')).toHaveCount(0)
+
+  // Music: Ada (no Pass) can listen but not choose; Ben (PLACES Pass) plays lofi beats for the room.
+  await ada.getByRole('button', { name: /^Music/ }).click()
+  await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('PLACES Pass members can play music')
+  await ben.getByRole('button', { name: /^Music/ }).click()
+  await ben.getByRole('dialog', { name: 'Music' }).getByRole('button', { name: /Lofi beats to study & work/ }).click()
+  await expect(ben.getByTestId('music-player')).toBeVisible()
+  await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('Playing in the room', { timeout: 15_000 })
+  await expect(ada.getByRole('button', { name: 'Music (playing)' })).toBeVisible()
 })

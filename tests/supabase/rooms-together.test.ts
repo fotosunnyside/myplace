@@ -95,4 +95,36 @@ describe.skipIf(!enabled)('rooms together (Supabase)', () => {
     expect((await ada().client.from('virtual_space_signals').insert({ space_id: room, from_user: ada().id, to_user: ben().id, kind: 'bye' })).error).not.toBeNull()
     expect((await ada().client.rpc('send_virtual_space_signal', { p_space_id: room, p_to: ben().id, p_kind: 'hack', p_payload: {} })).error).not.toBeNull()
   })
+
+  it('keeps bubble sizes within limits, and the same size where the room says so', async () => {
+    await ada().client.rpc('set_virtual_space_look', { p_space_id: room, p_scale: 2.5, p_status: `  ${'x'.repeat(80)}  ` }).throwOnError()
+    type Row = { user_id: string; bubble_scale: number | null; status: string | null }
+    const look = async () => ((await ben().client.rpc('virtual_space_roster', { p_space_id: room })).data as Row[]).find((r) => r.user_id === ada().id)
+    expect(await look()).toMatchObject({ bubble_scale: 1.8, status: 'x'.repeat(60) })
+
+    await service.from('virtual_spaces').update({ allow_bubble_resize: false }).eq('id', room).throwOnError()
+    await ada().client.rpc('set_virtual_space_look', { p_space_id: room, p_scale: 1.4, p_status: '' }).throwOnError()
+    expect(await look()).toMatchObject({ bubble_scale: null, status: null })
+    await service.from('virtual_spaces').update({ allow_bubble_resize: true }).eq('id', room)
+    // Outside the room there's nothing to change.
+    expect((await outsider().client.rpc('set_virtual_space_look', { p_space_id: room, p_scale: 1, p_status: 'hi' })).data).toBe(false)
+  })
+
+  it('lets PLACES Pass members play music for the room, and everyone in it see what’s on', async () => {
+    const play = (who: { client: SupabaseClient }, id: string | null) => who.client.rpc('set_virtual_space_music', { p_space_id: room, p_video_id: id, p_title: 'Lofi beats' })
+    expect((await play(ada(), 'jfKfPfyJRdk')).error?.message).toMatch(/PLACES Pass/)
+
+    await ben()
+      .client.from('member_plans')
+      .insert({ user_id: ben().id, kind: 'pass', quantity: 1, status: 'active', via: 'test', renews_at: new Date(Date.now() + 30 * 864e5).toISOString() })
+      .throwOnError()
+    expect((await play(ben(), 'jfKfPfyJRdk')).error).toBeNull()
+    expect((await ada().client.from('virtual_space_music').select('video_id, title').eq('space_id', room)).data).toEqual([{ video_id: 'jfKfPfyJRdk', title: 'Lofi beats' }])
+    expect((await outsider().client.from('virtual_space_music').select('video_id').eq('space_id', room)).data).toEqual([])
+    expect((await play(ben(), 'not-a-video-id')).error).not.toBeNull()
+    expect((await ada().client.from('virtual_space_music').insert({ space_id: room, video_id: 'jfKfPfyJRdk' })).error).not.toBeNull()
+
+    expect((await play(ben(), null)).error).toBeNull()
+    expect((await ada().client.from('virtual_space_music').select('video_id').eq('space_id', room)).data).toEqual([])
+  })
 })

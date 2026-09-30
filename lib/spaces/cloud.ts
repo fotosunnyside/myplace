@@ -2,7 +2,7 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, getSupabase } from '@/lib/backend/client'
 import { getBackendSession } from '@/lib/backend/auth'
 import type { MediaToken, SpacesBackend } from './backend'
-import { messageFromRow, patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type MessageRow, type PresenceRow, type SpaceRow } from './rows'
+import { messageFromRow, musicFromRow, patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type MessageRow, type MusicRow, type PresenceRow, type SpaceRow } from './rows'
 import { slugFor } from './rooms'
 import { SPACE_MESSAGES, SpaceError, type RoomSignal, type SpacePatch } from './types'
 
@@ -129,6 +129,26 @@ export const cloudBackend: SpacesBackend = {
     await call((sb) => sb.rpc('move_in_virtual_space', { p_space_id: spaceId, p_x: x, p_y: y }))
   },
 
+  async setLook(spaceId, scale, status) {
+    await call((sb) => sb.rpc('set_virtual_space_look', { p_space_id: spaceId, p_scale: scale, p_status: status }))
+  },
+
+  async music(spaceId) {
+    const rows = await call<MusicRow[]>((sb) => sb.from('virtual_space_music').select('*').eq('space_id', spaceId).limit(1))
+    return rows[0] ? musicFromRow(rows[0]) : null
+  },
+
+  onMusic(spaceId, cb) {
+    return listen((ch) => ch.on('postgres_changes', { event: '*', schema: 'public', table: 'virtual_space_music', filter: `space_id=eq.${spaceId}` }, () => cb()), `music:${spaceId}`)
+  },
+
+  async setMusic(spaceId, videoId, title = '') {
+    await call((sb) => sb.rpc('set_virtual_space_music', { p_space_id: spaceId, p_video_id: videoId, p_title: title })).catch((e: SpaceError) => {
+      if (e.code === 'forbidden') throw new SpaceError('forbidden', 'PLACES Pass members can play music for the room.')
+      throw e
+    })
+  },
+
   async messages(spaceId) {
     const rows = await call<MessageRow[]>((sb) => sb.from('virtual_space_messages').select('*').eq('space_id', spaceId).order('created_at', { ascending: false }).limit(50))
     return rows.reverse().map(messageFromRow)
@@ -187,6 +207,7 @@ export const cloudBackend: SpacesBackend = {
           room_type: input.roomType,
           visibility: 'members',
           max_participants: input.maxParticipants,
+          allow_bubble_resize: input.allowResize ?? true,
           allow_camera: true,
           allow_microphone: true,
           settings: {},

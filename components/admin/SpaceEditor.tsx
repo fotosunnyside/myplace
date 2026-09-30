@@ -42,6 +42,7 @@ interface Draft {
   guests: boolean
   allowCamera: boolean
   allowMicrophone: boolean
+  allowResize: boolean
   backgroundStyle: BackgroundStyle
   backgroundUrl: string | null
   backgroundPath: string | null
@@ -60,6 +61,7 @@ const draftFrom = (s: VirtualSpace): Draft => ({
   guests: s.visibility === 'public',
   allowCamera: s.allowCamera,
   allowMicrophone: s.allowMicrophone,
+  allowResize: s.allowResize,
   backgroundStyle: s.backgroundStyle,
   backgroundUrl: s.backgroundUrl,
   backgroundPath: s.backgroundPath,
@@ -79,6 +81,7 @@ function patchFrom(d: Draft, s: VirtualSpace): SpacePatch {
   if (d.guests !== (s.visibility === 'public')) patch.visibility = d.guests ? 'public' : 'members'
   if (d.allowCamera !== s.allowCamera) patch.allowCamera = d.allowCamera
   if (d.allowMicrophone !== s.allowMicrophone) patch.allowMicrophone = d.allowMicrophone
+  if (d.allowResize !== s.allowResize) patch.allowResize = d.allowResize
   if (d.focusX !== s.focusX) patch.focusX = d.focusX
   if (d.focusY !== s.focusY) patch.focusY = d.focusY
   if (d.file || d.backgroundStyle !== s.backgroundStyle || d.backgroundUrl !== s.backgroundUrl) {
@@ -212,6 +215,7 @@ function SpaceEditor({ space }: { space: VirtualSpace }) {
           <Switch label="Open to guests — drop in with just a name, no account" on={draft.guests} onChange={(v) => set({ guests: v })} />
           <Switch label="Allow cameras" on={draft.allowCamera} onChange={(v) => set({ allowCamera: v })} />
           <Switch label="Allow microphones" on={draft.allowMicrophone} onChange={(v) => set({ allowMicrophone: v })} />
+          <Switch label="Let people resize their bubbles" on={draft.allowResize} onChange={(v) => set({ allowResize: v })} />
         </Section>
 
         <Section title="Background" hint="JPEG, PNG or WebP. Large images are resized for rooms and stored in Supabase Storage.">

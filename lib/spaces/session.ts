@@ -2,7 +2,7 @@ import { HEARTBEAT_MS, type SpacesBackend } from './backend'
 import { DeviceMediaProvider } from './media/device'
 import { MediaDeviceError, type MediaParticipant, type MediaProvider } from './media/types'
 import { nearby, startingSpot, type Spot } from './proximity'
-import { SPACE_MESSAGES, SpaceError, type RoomMessage, type SpaceErrorCode, type SpacePresence, type VirtualSpace } from './types'
+import { SPACE_MESSAGES, SpaceError, type RoomMessage, type RoomMusic, type SpaceErrorCode, type SpacePresence, type VirtualSpace } from './types'
 
 /**
  * A person's visit to one Virtual Space: admission, presence heartbeat, media and recovery.
@@ -43,6 +43,8 @@ export interface RoomSessionState {
   messages: RoomMessage[]
   /** People close enough to see and hear (person-to-person connections). */
   nearby: string[]
+  /** Music playing in the room, if any. */
+  music: RoomMusic | null
 }
 
 export interface SessionDeps {
@@ -52,7 +54,7 @@ export interface SessionDeps {
   watchSpace: (spaceId: string, cb: (space: VirtualSpace | null) => void) => () => void
 }
 
-const IDLE: RoomSessionState = { phase: 'idle', space: null, camera: 'off', mic: 'off', roster: [], local: null, remote: [], carriesRemoteMedia: false, me: null, messages: [], nearby: [] }
+const IDLE: RoomSessionState = { phase: 'idle', space: null, camera: 'off', mic: 'off', roster: [], local: null, remote: [], carriesRemoteMedia: false, me: null, messages: [], nearby: [], music: null }
 const GIVE_UP_AFTER_MS = 60_000
 const ROSTER_POLL_MS = 10_000
 
@@ -142,6 +144,7 @@ export class RoomSession {
     this.syncMedia()
     this.startHeartbeat(space.id)
     this.startChat(space.id)
+    this.startMusic(space.id)
     this.refreshRoster(true)
 
     if (this.wantCamera && this.state.space?.allowCamera) await this.setCamera(true)
@@ -205,6 +208,26 @@ export class RoomSession {
     await this.deps.backend.move(space.id, x, y).catch(() => {})
   }
 
+  /** Your bubble's size (null = normal) and status note, for everyone in the room. */
+  async setLook(look: { scale?: number | null; status?: string | null }) {
+    const space = this.state.space
+    const me = this.state.me
+    if (!space || !me || this.state.phase !== 'in-room') return
+    const mine = this.state.roster.find((p) => p.userId === me)
+    const scale = look.scale !== undefined ? look.scale : (mine?.scale ?? null)
+    const status = look.status !== undefined ? look.status?.trim().slice(0, 60) || null : (mine?.status ?? null)
+    this.set({ roster: this.state.roster.map((p) => (p.userId === me ? { ...p, scale: space.allowResize ? scale : null, status } : p)) })
+    await this.deps.backend.setLook(space.id, scale, status).catch(() => {})
+  }
+
+  /** Play a YouTube video for the room (PLACES Pass), or stop with null. Throws SpaceError when not allowed. */
+  async setMusic(videoId: string | null, title = '') {
+    const space = this.state.space
+    if (!space) return
+    await this.deps.backend.setMusic(space.id, videoId, title)
+    this.refreshMusic(space.id)
+  }
+
   /** Say something in the room's chat. Throws SpaceError when it can't be sent. */
   async say(body: string) {
     const space = this.state.space
@@ -262,7 +285,7 @@ export class RoomSession {
     const media = this.media
     this.media = null
     media?.disconnectFromRoom().catch(() => {})
-    this.set({ phase: endPhase[code] ?? 'error', message, local: null, remote: [], roster: [], camera: 'off', mic: 'off', messages: [], nearby: [] })
+    this.set({ phase: endPhase[code] ?? 'error', message, local: null, remote: [], roster: [], camera: 'off', mic: 'off', messages: [], nearby: [], music: null })
   }
 
   private teardown() {
@@ -355,6 +378,18 @@ export class RoomSession {
         const known = new Set(this.state.messages.map((m) => m.id))
         this.set({ messages: [...list.filter((m) => !known.has(m.id)).map((m) => ({ ...m, receivedAt: 0 })), ...this.state.messages].slice(-100) })
       })
+      .catch(() => {})
+  }
+
+  private startMusic(spaceId: string) {
+    this.cleanups.push(this.deps.backend.onMusic(spaceId, () => this.refreshMusic(spaceId)))
+    this.refreshMusic(spaceId)
+  }
+
+  private refreshMusic(spaceId: string) {
+    this.deps.backend
+      .music(spaceId)
+      .then((music) => this.state.space?.id === spaceId && this.set({ music }))
       .catch(() => {})
   }
 

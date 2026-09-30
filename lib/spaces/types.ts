@@ -51,6 +51,8 @@ export interface VirtualSpace {
   isActive: boolean
   allowCamera: boolean
   allowMicrophone: boolean
+  /** The room's creator lets people make their bubble bigger or smaller. */
+  allowResize: boolean
   isOfficial: boolean
   sortOrder: number
   /** Overflow rooms ("Town Hall 2") point at their first room. */
@@ -73,6 +75,7 @@ export type SpacePatch = Partial<
     | 'visibility'
     | 'allowCamera'
     | 'allowMicrophone'
+    | 'allowResize'
     | 'backgroundStyle'
     | 'backgroundUrl'
     | 'backgroundPath'
@@ -87,6 +90,8 @@ export interface NewSpace {
   description: string
   roomType: RoomType
   maxParticipants: number
+  /** Let people resize their bubbles (default yes). */
+  allowResize?: boolean
 }
 
 /** Room types members can host today. */
@@ -113,6 +118,10 @@ export interface SpacePresence {
   /** Where their circle stands, 0–1 across and down the room; null until they've been placed. */
   x: number | null
   y: number | null
+  /** Their bubble's size (1 = normal), when the room allows resizing. */
+  scale: number | null
+  /** A short note shown on their bubble ("Heads down until 3"). */
+  status: string | null
   role: 'participant' | 'speaker' | 'moderator'
   joinedAt: string
   lastSeenAt: string
@@ -136,7 +145,15 @@ export interface RoomSignal {
   payload: unknown
 }
 
-export type SpaceErrorCode = 'signin' | 'missing' | 'closed' | 'full' | 'network' | 'forbidden' | 'unknown'
+/** Music playing in a room (a YouTube video), started by a PLACES Pass member. */
+export interface RoomMusic {
+  videoId: string
+  title: string
+  startedBy: string | null
+  startedAt: string
+}
+
+export type SpaceErrorCode ='signin' | 'missing' | 'closed' | 'full' | 'network' | 'forbidden' | 'unknown'
 
 export class SpaceError extends Error {
   constructor(

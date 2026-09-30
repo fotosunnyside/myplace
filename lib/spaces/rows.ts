@@ -1,4 +1,4 @@
-import { ROOM_TYPES, type RoomMessage, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
+import { ROOM_TYPES, type RoomMessage, type RoomMusic, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
 
 /** Database row shapes (public.virtual_spaces / public.virtual_space_participants). */
 export interface SpaceRow {
@@ -17,6 +17,7 @@ export interface SpaceRow {
   is_active: boolean
   allow_camera: boolean
   allow_microphone: boolean
+  allow_bubble_resize?: boolean
   is_official: boolean
   sort_order: number
   parent_space_id: string | null
@@ -37,6 +38,8 @@ export interface PresenceRow {
   zone: string | null
   pos_x?: number | null
   pos_y?: number | null
+  bubble_scale?: number | null
+  status?: string | null
   role: SpacePresence['role']
   joined_at: string
   last_seen_at: string
@@ -70,6 +73,7 @@ export function spaceFromRow(r: SpaceRow): VirtualSpace {
     isActive: r.is_active,
     allowCamera: r.allow_camera,
     allowMicrophone: r.allow_microphone,
+    allowResize: r.allow_bubble_resize ?? true,
     isOfficial: r.is_official,
     sortOrder: r.sort_order,
     parentSpaceId: r.parent_space_id,
@@ -89,6 +93,7 @@ const COLUMNS: Record<keyof SpacePatch, keyof SpaceRow> = {
   visibility: 'visibility',
   allowCamera: 'allow_camera',
   allowMicrophone: 'allow_microphone',
+  allowResize: 'allow_bubble_resize',
   backgroundStyle: 'background_style',
   backgroundUrl: 'background_url',
   backgroundPath: 'background_path',
@@ -115,6 +120,8 @@ export const presenceFromRow = (r: PresenceRow): SpacePresence => ({
   zone: r.zone,
   x: r.pos_x ?? null,
   y: r.pos_y ?? null,
+  scale: r.bubble_scale ?? null,
+  status: r.status ?? null,
   role: r.role,
   joinedAt: r.joined_at,
   lastSeenAt: r.last_seen_at,
@@ -149,3 +156,13 @@ export interface MessageRow {
 }
 
 export const messageFromRow = (r: MessageRow): RoomMessage => ({ id: r.id, userId: r.user_id, name: r.display_name, body: r.body, createdAt: r.created_at })
+
+export interface MusicRow {
+  space_id: string
+  video_id: string
+  title: string
+  started_by: string | null
+  started_at: string
+}
+
+export const musicFromRow = (r: MusicRow): RoomMusic => ({ videoId: r.video_id, title: r.title, startedBy: r.started_by, startedAt: r.started_at })

@@ -102,7 +102,7 @@ export function HostSpaces() {
 }
 
 function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
-  const [f, setF] = useState({ name: '', description: '', type: HOSTED_ROOM_TYPES[0].label, capacity: '8' })
+  const [f, setF] = useState({ name: '', description: '', type: HOSTED_ROOM_TYPES[0].label, capacity: '8', resize: true })
   const [busy, setBusy] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -112,6 +112,7 @@ function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
       description: f.description,
       roomType: (HOSTED_ROOM_TYPES.find((t) => t.label === f.type)?.type ?? 'meeting') as RoomType,
       maxParticipants: Number(f.capacity),
+      allowResize: f.resize,
     }
     const problem = validateNewSpace(input, HOSTED_SPACES.maxParticipants)
     if (problem) return toast(problem, 'error')
@@ -137,6 +138,13 @@ function NewSpaceForm({ onDone }: { onDone: (slug: string) => void }) {
         <Select label="Kind of room" options={HOSTED_ROOM_TYPES.map((t) => t.label)} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })} />
         <TextField label="Capacity" type="number" min={2} max={HOSTED_SPACES.maxParticipants} value={f.capacity} onChange={(e) => setF({ ...f, capacity: e.target.value })} />
       </div>
+      <label className="flex items-start gap-3 rounded-2xl border border-line bg-white p-4 text-sm">
+        <input type="checkbox" checked={f.resize} onChange={(e) => setF({ ...f, resize: e.target.checked })} className="mt-0.5 h-4 w-4 accent-teal" />
+        <span>
+          <span className="block font-medium text-navy">Let people resize their bubbles</span>
+          <span className="text-muted">Otherwise everyone’s bubble stays the same size.</span>
+        </span>
+      </label>
       <Card className="flex items-center gap-3 bg-ivory/60 p-3 text-sm text-navy-soft">
         <DoorOpen className="h-5 w-5 shrink-0 text-teal-deep" /> Any PLACES member with the link can join while there’s room.
       </Card>

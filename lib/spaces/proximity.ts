@@ -8,9 +8,9 @@
 
 export const ROOM_ASPECT = 16 / 9
 /** Connect when closer than this (in room heights). */
-export const TALK_DISTANCE = 0.42
+export const TALK_DISTANCE = 0.34
 /** Stay connected until further than this. */
-export const LEAVE_DISTANCE = 0.52
+export const LEAVE_DISTANCE = 0.42
 /** Person-to-person video is a mesh; keep it to the nearest few. */
 export const MAX_CONNECTIONS = 8
 
@@ -41,8 +41,8 @@ export const clampSpot = (s: Spot): Spot => ({ x: clamp(s.x, 0.06, 0.94), y: cla
  * land near the people already there (and can hear them) without sitting on top of anyone.
  */
 export function startingSpot(taken: Spot[]): Spot {
-  // Roughly a circle and a half apart on a laptop screen: side by side, not on top of each other.
-  const gap = 0.28
+  // About a bubble and a half apart on a laptop screen: side by side, not on top of each other.
+  const gap = 0.24
   const golden = Math.PI * (3 - Math.sqrt(5))
   for (let i = 0; i < 400; i++) {
     const r = 0.11 * Math.sqrt(i)

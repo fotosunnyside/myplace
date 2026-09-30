@@ -1,10 +1,10 @@
 import { HOSTED_SPACES } from '@/lib/config'
-import { canHostSpaces } from '@/lib/store/actions'
+import { activePlan, canHostSpaces } from '@/lib/store/actions'
 import { getState } from '@/lib/store/store'
 import { previewGuest } from './guest'
 import { STALE_AFTER_MS, type SpacesBackend } from './backend'
 import { slugFor, validateNewSpace } from './rooms'
-import { SPACE_MESSAGES, SpaceError, type RoomMessage, type RoomSignal, type SpacePresence, type VirtualSpace } from './types'
+import { SPACE_MESSAGES, SpaceError, type RoomMessage, type RoomMusic, type RoomSignal, type SpacePresence, type VirtualSpace } from './types'
 
 /**
  * On-device preview used until the PLACES backend is connected (e.g. the GitHub Pages build).
@@ -26,6 +26,7 @@ const base = {
   isActive: true,
   allowCamera: true,
   allowMicrophone: true,
+  allowResize: true,
   isOfficial: true,
   parentSpaceId: null,
   instanceNumber: 1,
@@ -120,6 +121,10 @@ const readChat = (spaceId: string): RoomMessage[] => {
     return []
   }
 }
+const MUSIC = 'places:spaces:music'
+const musicChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(MUSIC) : null
+const musicListeners = new Set<() => void>()
+musicChannel?.addEventListener('message', () => musicListeners.forEach((l) => l()))
 const signalChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('places:spaces:signals') : null
 
 const noAdmin = () => Promise.reject(new SpaceError('forbidden', 'Managing rooms needs the PLACES backend. See README → Virtual Places.'))
@@ -156,7 +161,7 @@ export const previewBackend: SpacesBackend = {
     const room = Object.fromEntries(Object.entries(board[spaceId] ?? {}).filter(([, p]) => fresh(p)))
     if (!room[id] && Object.keys(room).length >= space.maxParticipants) throw new SpaceError('full', SPACE_MESSAGES.full)
     const now = new Date().toISOString()
-    room[id] = { userId: id, displayName: me.name, avatarUrl: me.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: room[id]?.x ?? null, y: room[id]?.y ?? null, role: 'participant', joinedAt: room[id]?.joinedAt ?? now, lastSeenAt: now }
+    room[id] = { userId: id, displayName: me.name, avatarUrl: me.avatar ?? null, cameraOn: false, micOn: false, zone: null, x: room[id]?.x ?? null, y: room[id]?.y ?? null, scale: room[id]?.scale ?? null, status: room[id]?.status ?? null, role: 'participant', joinedAt: room[id]?.joinedAt ?? now, lastSeenAt: now }
     write({ ...board, [spaceId]: room })
   },
 
@@ -188,6 +193,45 @@ export const previewBackend: SpacesBackend = {
     if (!id || !mine) return
     board[spaceId][id] = { ...mine, x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) }
     write(board)
+  },
+
+  async setLook(spaceId, scale, status) {
+    const id = previewBackend.identity()
+    const board = read()
+    const mine = id ? board[spaceId]?.[id] : undefined
+    if (!id || !mine) return
+    const space = need(spaceId)
+    const note = status?.trim().slice(0, 60) || null
+    board[spaceId][id] = { ...mine, scale: space.allowResize && scale != null ? Math.min(1.8, Math.max(0.6, scale)) : null, status: note }
+    write(board)
+  },
+
+  async music(spaceId) {
+    try {
+      return (JSON.parse(localStorage.getItem(MUSIC) ?? '{}') as Record<string, RoomMusic>)[spaceId] ?? null
+    } catch {
+      return null
+    }
+  },
+
+  onMusic: (_spaceId, cb) => {
+    musicListeners.add(cb)
+    return () => musicListeners.delete(cb)
+  },
+
+  async setMusic(spaceId, videoId, title = '') {
+    const id = previewBackend.identity()
+    const space = need(spaceId)
+    if (!id || !read()[spaceId]?.[id]) throw new SpaceError('forbidden', 'Enter the room first.')
+    if (!activePlan(getState(), 'pass') && space.createdBy !== id) throw new SpaceError('forbidden', 'PLACES Pass members can play music for the room.')
+    try {
+      const all = JSON.parse(localStorage.getItem(MUSIC) ?? '{}') as Record<string, RoomMusic>
+      if (videoId) all[spaceId] = { videoId, title: title.slice(0, 120), startedBy: id, startedAt: new Date().toISOString() }
+      else delete all[spaceId]
+      localStorage.setItem(MUSIC, JSON.stringify(all))
+    } catch {}
+    musicChannel?.postMessage('changed')
+    musicListeners.forEach((l) => l())
   },
 
   messages: async (spaceId) => readChat(spaceId),
@@ -246,6 +290,7 @@ export const previewBackend: SpacesBackend = {
       description: input.description.trim(),
       roomType: input.roomType,
       maxParticipants: input.maxParticipants,
+      allowResize: input.allowResize ?? true,
       isOfficial: false,
       sortOrder: 100,
       settings: {},
