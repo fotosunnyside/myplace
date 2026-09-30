@@ -222,8 +222,9 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
     },
     music: async () => state.music,
     onMusic: () => () => {},
-    async setMusic(_id, videoId, title = '') {
-      state.music = videoId ? { videoId, title, startedBy: 'me', startedAt: '' } : null
+    tracks: async () => [],
+    async setMusic(_id, trackId) {
+      state.music = trackId ? { trackId, title: 'Morning Focus', artist: 'PLACES', url: 'https://example.com/a.mp3', durationS: 180, startedBy: 'me', startedAt: '' } : null
     },
     messages: async () => [],
     onMessage: (_id, cb) => {
@@ -549,9 +550,9 @@ describe('room session, your bubble and music', () => {
     const { backend } = fakeBackend()
     const s = make(backend)
     await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
-    await s.setMusic('jfKfPfyJRdk', 'Lofi beats')
+    await s.setMusic('trk-1')
     await new Promise((r) => setTimeout(r, 0))
-    expect(s.get().music).toMatchObject({ videoId: 'jfKfPfyJRdk', title: 'Lofi beats' })
+    expect(s.get().music).toMatchObject({ trackId: 'trk-1', title: 'Morning Focus' })
     await s.setMusic(null)
     await new Promise((r) => setTimeout(r, 0))
     expect(s.get().music).toBeNull()

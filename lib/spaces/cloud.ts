@@ -2,7 +2,7 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, getSupabase } from '@/lib/backend/client'
 import { getBackendSession } from '@/lib/backend/auth'
 import type { MediaToken, SpacesBackend } from './backend'
-import { messageFromRow, musicFromRow, patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, type MessageRow, type MusicRow, type PresenceRow, type SpaceRow } from './rows'
+import { messageFromRow, musicFromRow, patchToRow, presenceFromRow, spaceErrorCode, spaceFromRow, trackFromRow, type MessageRow, type MusicRow, type TrackRow, type PresenceRow, type SpaceRow } from './rows'
 import { slugFor } from './rooms'
 import { SPACE_MESSAGES, SpaceError, type RoomSignal, type SpacePatch } from './types'
 
@@ -134,7 +134,7 @@ export const cloudBackend: SpacesBackend = {
   },
 
   async music(spaceId) {
-    const rows = await call<MusicRow[]>((sb) => sb.from('virtual_space_music').select('*').eq('space_id', spaceId).limit(1))
+    const rows = await call<MusicRow[]>((sb) => sb.from('virtual_space_music').select('*, room_tracks(*)').eq('space_id', spaceId).limit(1))
     return rows[0] ? musicFromRow(rows[0]) : null
   },
 
@@ -142,11 +142,16 @@ export const cloudBackend: SpacesBackend = {
     return listen((ch) => ch.on('postgres_changes', { event: '*', schema: 'public', table: 'virtual_space_music', filter: `space_id=eq.${spaceId}` }, () => cb()), `music:${spaceId}`)
   },
 
-  async setMusic(spaceId, videoId, title = '') {
-    await call((sb) => sb.rpc('set_virtual_space_music', { p_space_id: spaceId, p_video_id: videoId, p_title: title })).catch((e: SpaceError) => {
+  async setMusic(spaceId, trackId) {
+    await call((sb) => sb.rpc('set_virtual_space_track', { p_space_id: spaceId, p_track_id: trackId })).catch((e: SpaceError) => {
       if (e.code === 'forbidden') throw new SpaceError('forbidden', 'PLACES Pass members can play music for the room.')
       throw e
     })
+  },
+
+  async tracks() {
+    const rows = await call<TrackRow[]>((sb) => sb.from('room_tracks').select('*').eq('is_active', true).order('sort_order').order('title'))
+    return rows.map(trackFromRow)
   },
 
   async messages(spaceId) {

@@ -800,7 +800,7 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
             canPlay={canPlayMusic}
             listening={listening}
             onListen={setListening}
-            onPlay={(videoId, title) => roomSession.setMusic(videoId, title)}
+            onPlay={(trackId) => roomSession.setMusic(trackId)}
             onClose={() => setMusicOpen(false)}
           />
         )}

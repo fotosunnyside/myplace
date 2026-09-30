@@ -1,4 +1,4 @@
-import { ROOM_TYPES, type RoomMessage, type RoomMusic, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
+import { ROOM_TYPES, type RoomMessage, type RoomMusic, type RoomTrack, type RoomType, type SpacePatch, type SpacePresence, type SpaceSettings, type VirtualSpace } from './types'
 
 /** Database row shapes (public.virtual_spaces / public.virtual_space_participants). */
 export interface SpaceRow {
@@ -157,12 +157,41 @@ export interface MessageRow {
 
 export const messageFromRow = (r: MessageRow): RoomMessage => ({ id: r.id, userId: r.user_id, name: r.display_name, body: r.body, createdAt: r.created_at })
 
+export interface TrackRow {
+  id: string
+  title: string
+  artist: string
+  license: string
+  path: string
+  url: string
+  duration_s: number | null
+  is_active: boolean
+  sort_order: number
+}
+
+export const trackFromRow = (r: TrackRow): RoomTrack => ({
+  id: r.id,
+  title: r.title,
+  artist: r.artist,
+  license: r.license,
+  url: r.url,
+  path: r.path,
+  durationS: r.duration_s,
+  isActive: r.is_active,
+  sortOrder: r.sort_order,
+})
+
 export interface MusicRow {
   space_id: string
-  video_id: string
+  track_id: string | null
   title: string
   started_by: string | null
   started_at: string
+  room_tracks: TrackRow | null
 }
 
-export const musicFromRow = (r: MusicRow): RoomMusic => ({ videoId: r.video_id, title: r.title, startedBy: r.started_by, startedAt: r.started_at })
+/** What a room is playing; null for anything that isn't a library track. */
+export const musicFromRow = (r: MusicRow): RoomMusic | null =>
+  r.track_id && r.room_tracks
+    ? { trackId: r.track_id, title: r.room_tracks.title || r.title, artist: r.room_tracks.artist, url: r.room_tracks.url, durationS: r.room_tracks.duration_s, startedBy: r.started_by, startedAt: r.started_at }
+    : null

@@ -1,4 +1,4 @@
-import type { NewSpace, RoomMessage, RoomMusic, RoomSignal, SpacePatch, SpacePresence, VirtualSpace } from './types'
+import type { NewSpace, RoomMessage, RoomMusic, RoomSignal, RoomTrack, SpacePatch, SpacePresence, VirtualSpace } from './types'
 
 /**
  * Everything Virtual Spaces needs from a backend. The UI and room session only talk to this,
@@ -34,8 +34,10 @@ export interface SpacesBackend {
   /* Music — PLACES Pass members (and the room's host) choose it; everyone in the room can listen */
   music(spaceId: string): Promise<RoomMusic | null>
   onMusic(spaceId: string, cb: () => void): () => void
-  /** Play a YouTube video for the room, or stop with null. Throws SpaceError('forbidden') without the Pass. */
-  setMusic(spaceId: string, videoId: string | null, title?: string): Promise<void>
+  /** Play a library track for the room, or stop with null. Throws SpaceError('forbidden') without the Pass. */
+  setMusic(spaceId: string, trackId: string | null): Promise<void>
+  /** The PLACES music library rooms can play from. */
+  tracks(): Promise<RoomTrack[]>
 
   /* Chat — only people in the room can read or write */
   messages(spaceId: string): Promise<RoomMessage[]>

@@ -223,11 +223,11 @@ export class RoomSession {
     await this.deps.backend.setLook(space.id, scale, status).catch(() => {})
   }
 
-  /** Play a YouTube video for the room (PLACES Pass), or stop with null. Throws SpaceError when not allowed. */
-  async setMusic(videoId: string | null, title = '') {
+  /** Play a library track for the room (PLACES Pass), or stop with null. Throws SpaceError when not allowed. */
+  async setMusic(trackId: string | null) {
     const space = this.state.space
     if (!space) return
-    await this.deps.backend.setMusic(space.id, videoId, title)
+    await this.deps.backend.setMusic(space.id, trackId)
     this.refreshMusic(space.id)
   }
 

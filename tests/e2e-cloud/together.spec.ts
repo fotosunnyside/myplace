@@ -16,6 +16,28 @@ test.skip(!URL || !SERVICE || !ANON, 'Needs a running Supabase stack')
 
 const service = () => createClient(URL, SERVICE, { auth: { persistSession: false } })
 let roomId = ''
+let trackId = ''
+let trackPath = ''
+
+/** A few seconds of silence as a WAV file, to stock the music library with. */
+function silentWav(seconds = 3, rate = 8000) {
+  const samples = seconds * rate
+  const b = Buffer.alloc(44 + samples)
+  b.write('RIFF', 0)
+  b.writeUInt32LE(36 + samples, 4)
+  b.write('WAVEfmt ', 8)
+  b.writeUInt32LE(16, 16)
+  b.writeUInt16LE(1, 20)
+  b.writeUInt16LE(1, 22)
+  b.writeUInt32LE(rate, 24)
+  b.writeUInt32LE(rate, 28)
+  b.writeUInt16LE(1, 32)
+  b.writeUInt16LE(8, 34)
+  b.write('data', 36)
+  b.writeUInt32LE(samples, 40)
+  b.fill(128, 44)
+  return b
+}
 const userIds: Record<string, string> = {}
 
 async function makeUser(name: string, pass = false) {
@@ -65,6 +87,8 @@ async function enter(page: Page, slug: string) {
 
 test.afterAll(async () => {
   if (roomId) await service().from('virtual_spaces').delete().eq('id', roomId)
+  if (trackId) await service().from('room_tracks').delete().eq('id', trackId)
+  if (trackPath) await service().storage.from('room-music').remove([trackPath])
 })
 
 /** Seen failing on CI only: what each person sees in the room. */
@@ -157,18 +181,30 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   await mine.getByRole('switch', { name: 'Show my talking circle' }).uncheck()
   await expect(ben.getByTestId('talk-ring')).toHaveCount(0)
 
-  // Music: Ada (no Pass) can listen but not choose; Ben (PLACES Pass) plays lofi beats for the room.
+  // Music from the PLACES library: Ada (no Pass) can listen but not choose; Ben (PLACES Pass) plays a track for the room.
+  trackPath = `test-${run}.wav`
+  await service().storage.from('room-music').upload(trackPath, silentWav(), { contentType: 'audio/wav' })
+  const url = service().storage.from('room-music').getPublicUrl(trackPath).data.publicUrl
+  const { data: track } = await service()
+    .from('room_tracks')
+    .insert({ title: `Quiet Focus ${run % 10000}`, artist: 'PLACES', license: 'test', path: trackPath, url, duration_s: 3 })
+    .select('id')
+    .single()
+    .throwOnError()
+  trackId = track!.id
   await ada.getByRole('button', { name: /^Music/ }).click()
   await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('PLACES Pass members can play music')
   await ben.getByRole('button', { name: /^Music/ }).click()
-  await ben.getByRole('dialog', { name: 'Music' }).getByRole('button', { name: /Lofi beats to study & work/ }).click()
-  await expect(ben.getByTestId('music-player')).toBeVisible()
-  const player = ben.getByTestId('music-player').locator('iframe')
-  await expect(player).toHaveAttribute('src', /^https:\/\/www\.youtube\.com\/embed\/jfKfPfyJRdk\?/)
-  const playerSrc = await player.getAttribute('src')
-  await expect(ben.getByRole('link', { name: /Sign in to YouTube/ })).toHaveAttribute('href', /accounts\.google\.com/)
+  await ben.getByRole('dialog', { name: 'Music' }).getByRole('button', { name: new RegExp(`Quiet Focus ${run % 10000}`) }).click()
+  await expect(ben.getByTestId('music-player')).toContainText(`Quiet Focus ${run % 10000}`)
+  const player = ben.getByTestId('music-player').locator('audio')
+  await expect(player).toHaveAttribute('src', url)
+  await player.evaluate((el) => ((el as HTMLAudioElement & { placesMark?: number }).placesMark = 1))
   await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('Playing in the room', { timeout: 15_000 })
   await expect(ada.getByRole('button', { name: 'Music (playing)' })).toBeVisible()
+  await ada.getByRole('dialog', { name: 'Music' }).getByRole('switch', { name: 'Listen' }).click()
+  await expect(ada.getByTestId('music-player').locator('audio')).toHaveAttribute('src', url)
+  await ada.getByRole('button', { name: 'Close music' }).click()
 
   // Ben, the host, changes the room's background from inside it; Ada sees it change. Ada can't change it.
   await expect(ada.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Background' })).toHaveCount(0)
@@ -183,6 +219,6 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   expect(row.data).toMatchObject({ background_style: 'custom' })
   expect(row.data!.background_path).toMatch(new RegExp(`^${roomId}/`))
 
-  // All that time the room kept updating around Ben's music, and the player never reloaded.
-  expect(await player.getAttribute('src')).toBe(playerSrc)
+  // All that time the room kept updating around Ben's music, and the player was never replaced.
+  expect(await player.evaluate((el) => (el as HTMLAudioElement & { placesMark?: number }).placesMark)).toBe(1)
 })

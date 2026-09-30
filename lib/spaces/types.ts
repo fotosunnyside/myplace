@@ -145,10 +145,28 @@ export interface RoomSignal {
   payload: unknown
 }
 
-/** Music playing in a room (a YouTube video), started by a PLACES Pass member. */
-export interface RoomMusic {
-  videoId: string
+/** A song in the PLACES music library that rooms can play. */
+export interface RoomTrack {
+  id: string
   title: string
+  artist: string
+  /** Where it comes from and the terms PLACES plays it under. */
+  license: string
+  url: string
+  path: string
+  /** Seconds; null until known. */
+  durationS: number | null
+  isActive: boolean
+  sortOrder: number
+}
+
+/** Music playing in a room (a library track), started by a PLACES Pass member or the room's host. */
+export interface RoomMusic {
+  trackId: string
+  title: string
+  artist: string
+  url: string
+  durationS: number | null
   startedBy: string | null
   startedAt: string
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, DoorOpen, Pencil, Users } from 'lucide-react'
+import { ArrowRight, DoorOpen, Music2, Pencil, Users } from 'lucide-react'
 import { Card, ButtonLink } from '@/components/ui/primitives'
 import { RoomBackdrop } from '@/components/spaces/RoomBackdrop'
 import { RoomStatus } from '@/components/spaces/SpaceCard'
@@ -32,6 +32,18 @@ export function AdminHome() {
             </p>
             <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-medium text-teal-deep">
               Manage rooms <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </Card>
+        </Link>
+        <Link href="/admin/music" className="group">
+          <Card lift className="flex h-full flex-col p-6">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-teal-wash text-teal-deep">
+              <Music2 className="h-5 w-5" />
+            </span>
+            <h2 className="mt-4 font-serif text-2xl">Room music</h2>
+            <p className="mt-1 text-navy-soft">The songs PLACES Pass members and hosts can play in their rooms.</p>
+            <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-medium text-teal-deep">
+              Manage music <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </span>
           </Card>
         </Link>

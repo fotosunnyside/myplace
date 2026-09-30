@@ -219,15 +219,18 @@ export const previewBackend: SpacesBackend = {
     return () => musicListeners.delete(cb)
   },
 
-  async setMusic(spaceId, videoId, title = '') {
+  // The music library lives on the PLACES backend; on this device there's nothing to play.
+  tracks: async () => [],
+
+  async setMusic(spaceId, trackId) {
     const id = previewBackend.identity()
     const space = need(spaceId)
     if (!id || !read()[spaceId]?.[id]) throw new SpaceError('forbidden', 'Enter the room first.')
     if (!activePlan(getState(), 'pass') && space.createdBy !== id) throw new SpaceError('forbidden', 'PLACES Pass members can play music for the room.')
+    if (trackId) throw new SpaceError('forbidden', 'Room music needs the PLACES backend.')
     try {
       const all = JSON.parse(localStorage.getItem(MUSIC) ?? '{}') as Record<string, RoomMusic>
-      if (videoId) all[spaceId] = { videoId, title: title.slice(0, 120), startedBy: id, startedAt: new Date().toISOString() }
-      else delete all[spaceId]
+      delete all[spaceId]
       localStorage.setItem(MUSIC, JSON.stringify(all))
     } catch {}
     musicChannel?.postMessage('changed')

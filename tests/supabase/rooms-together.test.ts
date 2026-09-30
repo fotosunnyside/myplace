@@ -110,21 +110,39 @@ describe.skipIf(!enabled)('rooms together (Supabase)', () => {
     expect((await outsider().client.rpc('set_virtual_space_look', { p_space_id: room, p_scale: 1, p_status: 'hi' })).data).toBe(false)
   })
 
-  it('lets PLACES Pass members play music for the room, and everyone in it see what’s on', async () => {
-    const play = (who: { client: SupabaseClient }, id: string | null) => who.client.rpc('set_virtual_space_music', { p_space_id: room, p_video_id: id, p_title: 'Lofi beats' })
-    expect((await play(ada(), 'jfKfPfyJRdk')).error?.message).toMatch(/PLACES Pass/)
+  it('lets PLACES Pass members play library tracks for the room, and everyone in it see what’s on', async () => {
+    // Only admins stock the library; members see active tracks.
+    const upload = { title: `Morning Focus ${run}`, artist: 'PLACES', license: 'test', path: `test-${run}.mp3`, url: 'https://example.com/a.mp3', duration_s: 180 }
+    expect((await ben().client.from('room_tracks').insert(upload)).error).not.toBeNull()
+    const { data: track } = await service.from('room_tracks').insert(upload).select('id').single().throwOnError()
+    const { data: hidden } = await service
+      .from('room_tracks')
+      .insert({ ...upload, title: 'Hidden', path: `hidden-${run}.mp3`, is_active: false })
+      .select('id')
+      .single()
+      .throwOnError()
+    expect((await ada().client.from('room_tracks').select('id').in('id', [track!.id, hidden!.id])).data).toEqual([{ id: track!.id }])
+    expect((await ada().client.from('room_tracks').update({ title: 'Mine now' }).eq('id', track!.id).select('id')).data).toEqual([])
+
+    const play = (who: { client: SupabaseClient }, id: string | null) => who.client.rpc('set_virtual_space_track', { p_space_id: room, p_track_id: id })
+    expect((await play(ada(), track!.id)).error?.message).toMatch(/PLACES Pass/)
 
     await ben()
       .client.from('member_plans')
       .insert({ user_id: ben().id, kind: 'pass', quantity: 1, status: 'active', via: 'test', renews_at: new Date(Date.now() + 30 * 864e5).toISOString() })
       .throwOnError()
-    expect((await play(ben(), 'jfKfPfyJRdk')).error).toBeNull()
-    expect((await ada().client.from('virtual_space_music').select('video_id, title').eq('space_id', room)).data).toEqual([{ video_id: 'jfKfPfyJRdk', title: 'Lofi beats' }])
-    expect((await outsider().client.from('virtual_space_music').select('video_id').eq('space_id', room)).data).toEqual([])
-    expect((await play(ben(), 'not-a-video-id')).error).not.toBeNull()
-    expect((await ada().client.from('virtual_space_music').insert({ space_id: room, video_id: 'jfKfPfyJRdk' })).error).not.toBeNull()
+    expect((await play(ben(), hidden!.id)).error).not.toBeNull()
+    expect((await play(ben(), track!.id)).error).toBeNull()
+    expect((await ada().client.from('virtual_space_music').select('track_id, title, room_tracks(url)').eq('space_id', room)).data).toEqual([
+      { track_id: track!.id, title: upload.title, room_tracks: { url: upload.url } },
+    ])
+    expect((await outsider().client.from('virtual_space_music').select('track_id').eq('space_id', room)).data).toEqual([])
+    expect((await ada().client.from('virtual_space_music').insert({ space_id: room, track_id: track!.id })).error).not.toBeNull()
+    // YouTube is switched off.
+    expect((await ben().client.rpc('set_virtual_space_music', { p_space_id: room, p_video_id: 'jfKfPfyJRdk', p_title: 'x' })).error).not.toBeNull()
 
     expect((await play(ben(), null)).error).toBeNull()
-    expect((await ada().client.from('virtual_space_music').select('video_id').eq('space_id', room)).data).toEqual([])
+    expect((await ada().client.from('virtual_space_music').select('track_id').eq('space_id', room)).data).toEqual([])
+    await service.from('room_tracks').delete().in('id', [track!.id, hidden!.id])
   })
 })

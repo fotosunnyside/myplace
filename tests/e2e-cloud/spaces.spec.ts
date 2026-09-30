@@ -170,3 +170,38 @@ test('someone from outside drops into the Accountability Department with just a 
   await service().auth.admin.deleteUser(who!.user_id)
   expect(errors).toEqual([])
 })
+
+test('admins stock the room music library; members only see the songs', async ({ browser }) => {
+  const admin = await makeUser('Ria', true)
+  const member = await makeUser('Sol')
+
+  const sol = await signIn(browser, member.email)
+  await sol.goto('admin/music/')
+  await expect(sol.getByText('This area is for PLACES admins')).toBeVisible()
+
+  const ria = await signIn(browser, admin.email)
+  await ria.goto('admin/')
+  await ria.getByRole('link', { name: /Room music/ }).click()
+  await expect(ria).toHaveURL(/admin\/music/)
+  await ria.getByLabel('Audio file').setInputFiles('tests/e2e/fixture.wav')
+  await expect(ria.getByLabel('Title')).toHaveValue('fixture')
+  await ria.getByLabel('Title').fill(`Soft Start ${run}`)
+  await ria.getByLabel('Artist').fill('PLACES Studio')
+  await ria.getByLabel('Source and licence').fill('Composed for PLACES')
+  await ria.getByRole('checkbox', { name: /right to let members play/ }).check()
+  await ria.getByRole('button', { name: 'Upload song' }).click()
+  await expect(ria.getByText(`“Soft Start ${run}” is in the library.`)).toBeVisible({ timeout: 15_000 })
+  await expect(ria.getByTestId('track-list')).toContainText(`Soft Start ${run}`)
+
+  const { data } = await service().from('room_tracks').select('id, path, url, duration_s, license').eq('title', `Soft Start ${run}`).single()
+  expect(data).toMatchObject({ license: 'Composed for PLACES', duration_s: 2 })
+  expect(data!.url).toContain('/storage/v1/object/public/room-music/')
+
+  // Hidden songs drop out of what members can pick; removing one deletes the file too.
+  await ria.getByRole('button', { name: `Hide Soft Start ${run}` }).click()
+  await expect(ria.getByRole('button', { name: `Show Soft Start ${run}` })).toBeVisible()
+  await ria.getByRole('button', { name: `Remove Soft Start ${run}` }).click()
+  await expect(ria.getByTestId('track-list').getByText(`Soft Start ${run}`)).toHaveCount(0)
+  await expect.poll(async () => (await service().from('room_tracks').select('id').eq('id', data!.id)).data?.length).toBe(0)
+  expect((await service().storage.from('room-music').list('', { search: data!.path })).data).toEqual([])
+})
