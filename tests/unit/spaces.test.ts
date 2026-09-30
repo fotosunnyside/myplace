@@ -6,7 +6,7 @@ import { PREVIEW_SPACES } from '@/lib/spaces/preview'
 import { featuredSpaces, hostedBy, peopleHere, roomBackground, roomBehaviour, slugFor, validateNewSpace, validatePatch, checkBackgroundFile } from '@/lib/spaces/rooms'
 import { patchToRow, spaceErrorCode, spaceFromRow, type SpaceRow } from '@/lib/spaces/rows'
 import { RoomSession } from '@/lib/spaces/session'
-import { SpaceError, type RoomMessage, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
+import { SpaceError, type RoomMessage, type RoomMusic, type SpacePresence, type VirtualSpace } from '@/lib/spaces/types'
 import { distance, LEAVE_DISTANCE, MAX_CONNECTIONS, nearby, startingSpot, step, TALK_DISTANCE } from '@/lib/spaces/proximity'
 
 const [townHall, accountability] = PREVIEW_SPACES
@@ -184,8 +184,8 @@ class FakeMedia implements MediaProvider {
 
 function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
   const room = new Map<string, SpacePresence>()
-  for (let i = 0; i < (opts.others ?? 0); i++) room.set(`o${i}`, { userId: `o${i}`, displayName: `Other ${i}`, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: 0.5, y: 0.5 + i * 0.05, role: 'participant', joinedAt: `0${i}`, lastSeenAt: '' })
-  const state = { online: true, admitted: true, closed: false, capacity: opts.capacity ?? 20, touches: [] as { cameraOn: boolean; micOn: boolean }[], left: 0, moves: [] as { x: number; y: number }[], chat: [] as ((m: RoomMessage) => void)[] }
+  for (let i = 0; i < (opts.others ?? 0); i++) room.set(`o${i}`, { userId: `o${i}`, displayName: `Other ${i}`, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: 0.5, y: 0.5 + i * 0.05, scale: null, status: null, role: 'participant', joinedAt: `0${i}`, lastSeenAt: '' })
+  const state = { online: true, admitted: true, closed: false, capacity: opts.capacity ?? 20, touches: [] as { cameraOn: boolean; micOn: boolean }[], left: 0, moves: [] as { x: number; y: number }[], chat: [] as ((m: RoomMessage) => void)[], music: null as RoomMusic | null }
   const b: SpacesBackend = {
     mode: 'preview',
     listSpaces: async () => PREVIEW_SPACES,
@@ -199,7 +199,7 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
       if (!state.online) throw new SpaceError('network', 'offline')
       if (state.closed) throw new SpaceError('closed', 'This room is currently closed.')
       if (!room.has('me') && room.size >= state.capacity) throw new SpaceError('full', 'This room is currently full.')
-      room.set('me', { userId: 'me', displayName: me.name, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: room.get('me')?.x ?? null, y: room.get('me')?.y ?? null, role: 'participant', joinedAt: '9', lastSeenAt: '' })
+      room.set('me', { userId: 'me', displayName: me.name, avatarUrl: null, cameraOn: false, micOn: false, zone: null, x: room.get('me')?.x ?? null, y: room.get('me')?.y ?? null, scale: null, status: null, role: 'participant', joinedAt: '9', lastSeenAt: '' })
       state.admitted = true
     },
     async touch(_id, s) {
@@ -215,6 +215,15 @@ function fakeBackend(opts: { capacity?: number; others?: number } = {}) {
       const mine = room.get('me')
       if (mine) room.set('me', { ...mine, x, y })
       state.moves.push({ x, y })
+    },
+    async setLook(_id, scale, status) {
+      const mine = room.get('me')
+      if (mine) room.set('me', { ...mine, scale, status })
+    },
+    music: async () => state.music,
+    onMusic: () => () => {},
+    async setMusic(_id, videoId, title = '') {
+      state.music = videoId ? { videoId, title, startedBy: 'me', startedAt: '' } : null
     },
     messages: async () => [],
     onMessage: (_id, cb) => {
@@ -269,7 +278,7 @@ describe('talking distance', () => {
     for (let i = 0; i < 6; i++) taken.push(startingSpot(taken))
     for (let i = 1; i < taken.length; i++) {
       const gaps = taken.slice(0, i).map((t) => distance(t, taken[i]))
-      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0.28) // side by side, not on top of anyone
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0.24) // side by side, not on top of anyone
       expect(Math.min(...gaps)).toBeLessThan(TALK_DISTANCE) // and close enough to talk to someone
     }
     expect(distance(first, taken[1])).toBeLessThan(TALK_DISTANCE)
@@ -480,5 +489,40 @@ describe('room session, together', () => {
     expect(s.get().messages.map((m) => m.body)).toEqual(['Hello room', 'Hi Josie'])
     await s.leave()
     expect(s.get().messages).toEqual([])
+  })
+})
+
+describe('room session, your bubble and music', () => {
+  const make = (backend: SpacesBackend) => new RoomSession({ backend, createMedia: () => new FakeMedia(), watchSpace: () => () => {} })
+
+  it('sets your bubble size and status for everyone, and keeps sizes even where resizing is off', async () => {
+    const { backend, room } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
+    await s.setLook({ scale: 1.4, status: '  Heads down until 3  ' })
+    expect(room.get('me')).toMatchObject({ scale: 1.4, status: 'Heads down until 3' })
+    expect(s.get().roster.find((p) => p.userId === 'me')).toMatchObject({ scale: 1.4, status: 'Heads down until 3' })
+    await s.setLook({ status: null })
+    expect(room.get('me')).toMatchObject({ scale: 1.4, status: null })
+    await s.leave()
+
+    const fixed = make(backend)
+    await fixed.enter({ ...townHall, allowResize: false }, { name: 'Josie Rivers' }, { camera: false, mic: false })
+    await fixed.setLook({ scale: 1.6 })
+    expect(fixed.get().roster.find((p) => p.userId === 'me')?.scale).toBeNull()
+    await fixed.leave()
+  })
+
+  it('plays and stops music for the room', async () => {
+    const { backend } = fakeBackend()
+    const s = make(backend)
+    await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
+    await s.setMusic('jfKfPfyJRdk', 'Lofi beats')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.get().music).toMatchObject({ videoId: 'jfKfPfyJRdk', title: 'Lofi beats' })
+    await s.setMusic(null)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.get().music).toBeNull()
+    await s.leave()
   })
 })

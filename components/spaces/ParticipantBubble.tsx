@@ -19,6 +19,8 @@ export interface BubblePerson {
   videoUnavailable?: boolean
   /** Close enough to see and hear each other. */
   nearby?: boolean
+  /** A short note on their bubble. */
+  status?: string | null
 }
 
 function StreamVideo({ stream, mirror }: { stream: MediaStream; mirror: boolean }) {
@@ -70,7 +72,16 @@ export function ParticipantBubble({
   const badge = Math.max(22, Math.round(size * 0.2))
 
   return (
-    <div className="flex flex-col items-center" style={{ width: size }}>
+    <div className="relative flex flex-col items-center" style={{ width: size }}>
+      {person.status && (
+        // A status note sits on top of the bubble, highlighted so it reads at a glance.
+        <span
+          className="absolute -top-2.5 left-1/2 z-10 max-w-[calc(100%+60px)] -translate-x-1/2 -translate-y-full truncate rounded-full bg-[#ffe7a3] px-2.5 py-1 text-[0.7rem] font-semibold text-navy shadow-soft ring-2 ring-white"
+          data-testid="bubble-status"
+        >
+          {person.status}
+        </span>
+      )}
       <button
         type="button"
         onClick={onFocus}
@@ -123,7 +134,7 @@ export function ParticipantBubble({
       >
         {person.isLocal ? 'You' : person.name.split(' ')[0]}
       </span>
-      {focused && person.isLocal && <span className="mt-1 whitespace-nowrap rounded-full bg-navy/75 px-2.5 py-0.5 text-[0.68rem] text-white backdrop-blur">{statusText(person)}</span>}
+
       {!person.isLocal && person.audioStream && <StreamAudio stream={person.audioStream} />}
     </div>
   )

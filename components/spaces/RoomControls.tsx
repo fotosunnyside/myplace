@@ -1,6 +1,6 @@
 'use client'
 
-import { DoorOpen, Loader2, MessageSquare, Mic, MicOff, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Loader2, MessageSquare, Mic, MicOff, Music2, Video, VideoOff } from 'lucide-react'
 import type { DeviceState } from '@/lib/spaces/session'
 import { cn } from '@/lib/cn'
 
@@ -57,6 +57,9 @@ export function RoomControls({
   chatOpen = false,
   unread = 0,
   onChat,
+  musicOn = false,
+  musicOpen = false,
+  onMusic,
 }: {
   camera: DeviceState
   mic: DeviceState
@@ -66,6 +69,10 @@ export function RoomControls({
   chatOpen?: boolean
   unread?: number
   onChat?: () => void
+  /** Music for the room: whether it's playing, and the small toggle. */
+  musicOn?: boolean
+  musicOpen?: boolean
+  onMusic?: () => void
 }) {
   return (
     <div role="toolbar" aria-label="Room controls" className="flex items-end gap-5 rounded-full bg-navy/45 px-6 py-3 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.6)] ring-1 ring-white/15 backdrop-blur-xl md:gap-7 md:px-8">
@@ -93,6 +100,21 @@ export function RoomControls({
               {unread}
             </span>
           )}
+        </button>
+      )}
+      {onMusic && (
+        <button
+          type="button"
+          onClick={onMusic}
+          aria-pressed={musicOpen}
+          aria-label={musicOn ? 'Music (playing)' : 'Music'}
+          className={cn('relative flex flex-col items-center gap-1 self-center text-[0.62rem] font-medium', musicOpen ? 'text-white' : 'text-white/80')}
+        >
+          <span className={cn('grid h-9 w-9 place-items-center rounded-full transition active:scale-95', musicOpen ? 'bg-white text-navy' : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25')}>
+            <Music2 className="h-4 w-4" strokeWidth={1.9} />
+          </span>
+          Music
+          {musicOn && <span className="absolute right-0.5 top-0 h-2.5 w-2.5 rounded-full bg-aqua ring-2 ring-navy/40" aria-hidden />}
         </button>
       )}
       <button type="button" onClick={onLeave} className="flex flex-col items-center gap-1 text-[0.68rem] font-medium text-white/90">
