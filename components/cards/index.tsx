@@ -5,7 +5,6 @@ import {
   Bookmark,
   Briefcase,
   ChevronUp,
-  ExternalLink,
   Gem,
   Heart,
   Leaf,
@@ -28,6 +27,7 @@ import { addComment, deletePost, isSaved, toggleLike, toggleSave, toggleUpvote, 
 import { perform, useNow, useWorld, withAuth } from '@/lib/store/hooks'
 import { count, coursePrice, formatCount, formatPrice, person, timeAgo, timeUntil } from '@/lib/store/selectors'
 import { cn } from '@/lib/cn'
+import { LinkCard, Linkified } from './LinkCard'
 
 export function TimeAgo({ ts, className }: { ts: number; className?: string }) {
   const now = useNow()
@@ -270,12 +270,13 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
           </button>
         )}
       </header>
-      {post.body && <p className="mt-2 whitespace-pre-line text-[0.62rem] leading-snug text-navy @3xl:mt-3 @3xl:text-[0.95rem] @3xl:leading-relaxed">{post.body}</p>}
-      {post.link && !compact && (
-        <a href={post.link} target="_blank" rel="noopener noreferrer nofollow" className="mt-3 hidden items-center gap-2 truncate rounded-xl bg-ivory px-3 py-2 text-sm text-teal-deep hover:underline @3xl:flex">
-          <ExternalLink className="h-4 w-4 shrink-0" /> {post.link.replace(/^https?:\/\//, '')}
-        </a>
+      {/* A post that's only a link shows just the preview. */}
+      {post.body && post.body.trim() !== post.link && (
+        <p className="mt-2 whitespace-pre-line break-words text-[0.62rem] leading-snug text-navy @3xl:mt-3 @3xl:text-[0.95rem] @3xl:leading-relaxed">
+          <Linkified text={post.body} />
+        </p>
       )}
+      {post.link && !post.image && !post.video && <LinkCard url={post.link} className="mt-2 @3xl:mt-4" />}
       {post.image && (
         <div className="relative mt-2 aspect-[16/8] overflow-hidden rounded-xl @3xl:mt-4 @3xl:aspect-[16/9] @3xl:rounded-2xl">
           <Picture src={post.image} alt="" fill sizes="(min-width: 1024px) 640px, 320px" className="object-cover" />
@@ -287,7 +288,8 @@ export function PostCard({ post, compact }: { post: Post; compact?: boolean }) {
           controls
           playsInline
           preload="metadata"
-          className="mt-2 max-h-[520px] w-full rounded-xl bg-navy @3xl:mt-4 @3xl:rounded-2xl"
+          // Its own shape: tall videos stay tall, wide ones wide.
+          className="mx-auto mt-2 block h-auto max-h-[80vh] w-auto max-w-full rounded-xl @3xl:mt-4 @3xl:rounded-2xl"
           aria-label={`Video from ${author?.name ?? 'this post'}`}
         />
       )}

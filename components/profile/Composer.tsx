@@ -1,8 +1,10 @@
 'use client'
 
 import Image from 'next/image'
-import { BarChart3, Image as ImageIcon, Link2, Loader2, MapPin, Send, Video, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { BarChart3, Image as ImageIcon, Loader2, MapPin, Send, Video, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { LinkCard } from '@/components/cards/LinkCard'
+import { firstUrl } from '@/lib/linkPreview'
 import { Card } from '@/components/ui/primitives'
 import { createPost } from '@/lib/store/actions'
 import { perform, withAuth } from '@/lib/store/hooks'
@@ -18,6 +20,12 @@ export function Composer() {
   const [uploading, setUploading] = useState(false)
   const file = useRef<HTMLInputElement>(null)
   const videoFile = useRef<HTMLInputElement>(null)
+  // Paste a link and its preview appears (once you pause typing, so we don't look up half an address).
+  const [link, setLink] = useState<string | null>(null)
+  useEffect(() => {
+    const t = setTimeout(() => setLink(firstUrl(body)), 600)
+    return () => clearTimeout(t)
+  }, [body])
 
   const submit = () =>
     withAuth(() => {
@@ -32,7 +40,6 @@ export function Composer() {
   const actions = [
     { label: 'Photo', icon: ImageIcon },
     { label: 'Video', icon: Video },
-    { label: 'Link', icon: Link2 },
     { label: 'Poll', icon: BarChart3 },
     { label: 'Location', icon: MapPin },
   ]
@@ -57,7 +64,7 @@ export function Composer() {
           <input
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="What's on your mind?"
+            placeholder="What's on your mind? Paste a link to share it."
             maxLength={2000}
             className="h-8 w-full rounded-full bg-ivory/80 px-3 text-[0.62rem] text-navy outline-none placeholder:text-muted focus:bg-white focus:ring-2 focus:ring-teal/20 @3xl:h-12 @3xl:px-5 @3xl:text-[0.95rem]"
           />
@@ -79,9 +86,10 @@ export function Composer() {
           <Loader2 className="h-4 w-4 animate-spin text-teal" /> Uploading your video…
         </p>
       )}
+      {link && !image && !video && <LinkCard url={link} className="mt-3" />}
       {video && (
-        <div className="relative mt-3 overflow-hidden rounded-xl bg-navy">
-          <video src={video} controls playsInline preload="metadata" className="max-h-[420px] w-full" aria-label="Video to post" />
+        <div className="relative mt-3 overflow-hidden rounded-xl bg-ivory">
+          <video src={video} controls playsInline preload="metadata" className="mx-auto block h-auto max-h-[60vh] w-auto max-w-full" aria-label="Video to post" />
           <button onClick={() => setVideo(undefined)} aria-label="Remove video" className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90">
             <X className="h-4 w-4" />
           </button>

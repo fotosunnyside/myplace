@@ -34,3 +34,7 @@ enable_confirmations = false
 
 [functions.virtual-space-token]
 verify_jwt = true
+
+# Link previews for posts (public page metadata only), called with the publishable key.
+[functions.link-preview]
+verify_jwt = false

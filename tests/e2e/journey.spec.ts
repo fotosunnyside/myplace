@@ -31,6 +31,12 @@ test('a person can join and use every Place', async ({ page }, info) => {
   await page.getByRole('button', { name: 'Post', exact: true }).first().click()
   await expect(page.getByText('Hello from the journey test')).toBeVisible()
   await expect(page.locator('article', { hasText: 'Hello from the journey test' }).first().locator('video')).toHaveAttribute('src', /^data:video\/mp4/)
+  // Paste a link: the post shows a preview card for it (a plain card here, without the preview service).
+  await page.getByPlaceholder("What's on your mind?").first().fill('Worth a read https://example.com/slow-living')
+  await expect(page.getByTestId('link-card').first()).toContainText('example.com')
+  await page.getByRole('button', { name: 'Post', exact: true }).first().click()
+  const linkPost = page.locator('article', { hasText: 'Worth a read' }).first()
+  await expect(linkPost.getByTestId('link-card')).toHaveAttribute('href', 'https://example.com/slow-living')
   await settle(page)
 
   // MindPlace: learn + reply

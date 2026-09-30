@@ -163,6 +163,15 @@ jobs:
           fi
           supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           supabase db push --linked --include-all --password "$SUPABASE_DB_PASSWORD" --yes
+      # Link previews in posts: the link-preview edge function reads a site's title and image (public data only).
+      - name: Deploy the link-preview function
+        continue-on-error: true
+        run: |
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && exit 0
+          if ! supabase functions deploy link-preview --project-ref "$PROJECT_REF" --no-verify-jwt --use-api; then
+            echo "::warning title=Link previews not deployed::Posts still show a plain link card. Deploy with: supabase functions deploy link-preview --no-verify-jwt"
+            exit 1
+          fi
       # Guests drop into rooms open to guests with just a name (anonymous sign-ins). Changes only this one auth setting.
       - name: Allow guests in open rooms
         continue-on-error: true
