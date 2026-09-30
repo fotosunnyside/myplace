@@ -184,6 +184,10 @@ test('ads, team workrooms and leaving PLACES', async ({ browser }) => {
   await kai.page.getByLabel('New channel name').press('Enter')
   await kai.page.getByLabel('Message #designs').fill('Sketches go here')
   await kai.page.getByLabel('Message #designs').press('Enter')
+  const workroomId = new globalThis.URL(roomUrl).searchParams.get('id')!
+  await expect
+    .poll(async () => (await service().from('workroom_messages').select('body').eq('workroom_id', workroomId)).data?.map((r) => r.body), { timeout: 15_000 })
+    .toContain('Sketches go here')
 
   await go(mo.page, 'notifications/')
   await expect(mo.page.getByText(/You were added to the workroom “Kite crew/)).toBeVisible({ timeout: 15_000 })
