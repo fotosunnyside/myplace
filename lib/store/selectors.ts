@@ -19,6 +19,8 @@ export const followerCount = (s: WorldState, id: ID) =>
 export const isFollowing = (s: WorldState, id: ID) => !!s.accountId && followingOf(s, s.accountId).includes(id)
 
 export const shopOf = (s: WorldState, ownerId: ID) => s.shops.find((x) => x.ownerId === ownerId)
+/** Every storefront someone runs (PLACES Pass members can have several). */
+export const shopsOf = (s: WorldState, ownerId: ID) => s.shops.filter((x) => x.ownerId === ownerId)
 
 export const enrollmentsOf = (s: WorldState, id: ID) => s.enrollments[id] ?? []
 

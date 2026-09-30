@@ -48,5 +48,8 @@ export const ADS = {
 /** PLACES fee on shipped MarketPlace sales (SALES_FEE_RATE in lib/store/actions.ts). Local sales are free. Not removed by the Pass. */
 export const SALES_FEE_LABEL = '1%'
 
+/** How many storefronts a member may run (public.shop_limit()): one for everyone, more with PLACES Pass. */
+export const STOREFRONTS = { free: 1, pass: 5 }
+
 /** Starting limits for members' own spaces (public.hosted_space_limits()). Not unlimited video. */
 export const HOSTED_SPACES = { maxParticipants: 12, roomsPerHost: 5 }

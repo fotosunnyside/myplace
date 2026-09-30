@@ -22,7 +22,7 @@ import type {
   WorldState,
   Workroom,
 } from '@/lib/types'
-import { COURSE_FEE_RATE } from '@/lib/config'
+import { COURSE_FEE_RATE, STOREFRONTS } from '@/lib/config'
 
 export const uid = (prefix = 'id') =>
   `${prefix}_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 12) : Math.random().toString(36).slice(2, 14)}`
@@ -364,38 +364,48 @@ export const STRIPE_LINK_RE = /^https:\/\/(buy\.stripe\.com|checkout\.stripe\.co
 
 export function createShop(s: WorldState, input: Pick<Shop, 'name' | 'category' | 'description' | 'image'>, now: number): { state: WorldState; id: ID } {
   const me = need(s)
-  if (s.shops.some((x) => x.ownerId === me)) throw new ActionError('You already have a shop.')
+  const limit = storefrontLimit(s)
+  if (s.shops.filter((x) => x.ownerId === me).length >= limit)
+    throw new ActionError(limit === STOREFRONTS.free ? `You already have a shop. PLACES Pass lets you open up to ${STOREFRONTS.pass} storefronts.` : 'You’ve reached your storefront limit.')
   if (!input.name.trim()) throw new ActionError('Name your shop.')
   const id = uid('shp')
   return { state: { ...s, shops: [...s.shops, { ...input, name: input.name.trim(), id, ownerId: me, createdAt: now }] }, id }
 }
 
-export type ProductInput = Pick<Product, 'title' | 'description' | 'price' | 'image' | 'category'> & { stripeLink?: string; ships?: boolean }
+/** Storefronts the signed-in member may run: one, or up to five with PLACES Pass (admins aren't limited by the database). */
+export const storefrontLimit = (s: WorldState) => (activePlan(s, 'pass') ? STOREFRONTS.pass : STOREFRONTS.free)
+
+export type ProductInput = Pick<Product, 'title' | 'description' | 'price' | 'image' | 'category'> & { stripeLink?: string; ships?: boolean; /** Which of your shops; defaults to your first. */ shopId?: ID }
 
 export function createProduct(s: WorldState, input: ProductInput, now: number): { state: WorldState; id: ID } {
   const me = need(s)
-  const shop = s.shops.find((x) => x.ownerId === me)
-  if (!shop) throw new ActionError('Open your shop first.')
+  const mine = s.shops.filter((x) => x.ownerId === me)
+  const shop = input.shopId ? mine.find((x) => x.id === input.shopId) : mine[0]
+  if (!shop) throw new ActionError(mine.length ? 'Choose one of your shops.' : 'Open your shop first.')
   if (!input.title.trim()) throw new ActionError('Give your product a name.')
   if (!Number.isFinite(input.price) || input.price < 50) throw new ActionError('Set a price of at least $0.50.')
   if (!input.image) throw new ActionError('Add a product photo.')
   const link = input.stripeLink?.trim()
   if (link && !STRIPE_LINK_RE.test(link)) throw new ActionError('Paste a Stripe Payment Link (it starts with https://buy.stripe.com/).')
   const id = uid('prd')
-  return { state: { ...s, products: [{ ...input, title: input.title.trim(), stripeLink: link || undefined, id, shopId: shop.id, createdAt: now }, ...s.products] }, id }
+  const { shopId: _chosen, ...fields } = input
+  void _chosen
+  return { state: { ...s, products: [{ ...fields, title: input.title.trim(), stripeLink: link || undefined, id, shopId: shop.id, createdAt: now }, ...s.products] }, id }
 }
 
 export function updateProduct(s: WorldState, productId: ID, patch: Partial<ProductInput>): WorldState {
   const me = need(s)
-  const myShop = s.shops.find((x) => x.ownerId === me)
+  const mine = new Set(s.shops.filter((x) => x.ownerId === me).map((x) => x.id))
   if (patch.stripeLink && !STRIPE_LINK_RE.test(patch.stripeLink.trim())) throw new ActionError('Paste a Stripe Payment Link (it starts with https://buy.stripe.com/).')
-  return { ...s, products: s.products.map((p) => (p.id === productId && p.shopId === myShop?.id ? { ...p, ...patch } : p)) }
+  const { shopId: _moved, ...fields } = patch
+  void _moved
+  return { ...s, products: s.products.map((p) => (p.id === productId && mine.has(p.shopId) ? { ...p, ...fields } : p)) }
 }
 
 export function deleteProduct(s: WorldState, productId: ID): WorldState {
   const me = need(s)
-  const myShop = s.shops.find((x) => x.ownerId === me)
-  return { ...s, products: s.products.filter((p) => !(p.id === productId && p.shopId === myShop?.id)) }
+  const mine = new Set(s.shops.filter((x) => x.ownerId === me).map((x) => x.id))
+  return { ...s, products: s.products.filter((p) => !(p.id === productId && mine.has(p.shopId))) }
 }
 
 /** Records an order. `via: 'stripe'` once the buyer returns from the seller's Payment Link. */

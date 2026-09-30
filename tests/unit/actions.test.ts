@@ -118,13 +118,33 @@ describe('MindPlace', () => {
 describe('MarketPlace', () => {
   it('opens a shop, lists a product and validates Stripe links', () => {
     let s = A.createShop(joined(), { name: 'Studio', category: 'Art', description: '', image: '/x.webp' }, NOW).state
-    expect(() => A.createShop(s, { name: 'Again', category: 'Art', description: '', image: '' }, NOW)).toThrow(/already/)
+    expect(() => A.createShop(s, { name: 'Again', category: 'Art', description: '', image: '' }, NOW)).toThrow(/PLACES Pass lets you open up to 5/)
     const base = { title: 'Print', description: '', price: 2400, image: '/x.webp', category: 'Digital' as const }
     expect(() => A.createProduct(s, { ...base, stripeLink: 'https://evil.example.com/pay' }, NOW)).toThrow(/Stripe/)
     expect(() => A.createProduct(s, { ...base, price: 10 }, NOW)).toThrow(/\$0.50/)
     const r = A.createProduct(s, { ...base, stripeLink: 'https://buy.stripe.com/test_123' }, NOW)
     s = r.state
     expect(s.products[0].stripeLink).toBe('https://buy.stripe.com/test_123')
+  })
+
+  it('lets PLACES Pass members run several storefronts and list into each', () => {
+    const shop = (name: string) => ({ name, category: 'Art', description: '', image: '/x.webp' })
+    let s = A.startPlan(joined(), 'pass', 'test', NOW)
+    for (const name of ['One', 'Two', 'Three', 'Four', 'Five']) s = A.createShop(s, shop(name), NOW).state
+    expect(() => A.createShop(s, shop('Six'), NOW)).toThrow(/limit/)
+    const mine = s.shops.filter((x) => x.ownerId === me(s))
+    expect(mine).toHaveLength(5)
+    const base = { title: 'Print', description: '', price: 2400, image: '/x.webp', category: 'Digital' as const }
+    s = A.createProduct(s, { ...base, shopId: mine[2].id }, NOW).state
+    expect(s.products[0]).toMatchObject({ shopId: mine[2].id })
+    expect(s.products[0]).not.toHaveProperty('shopId', undefined)
+    expect(() => A.createProduct(s, { ...base, shopId: 'shp_luna' }, NOW)).toThrow(/Choose one of your shops/)
+    // Editing and removing work in any of your shops.
+    const id = s.products[0].id
+    s = A.updateProduct(s, id, { title: 'Big print' })
+    expect(s.products.find((p) => p.id === id)?.title).toBe('Big print')
+    s = A.deleteProduct(s, id)
+    expect(s.products.some((p) => p.id === id)).toBe(false)
   })
 
   it('records orders and notifies the buyer', () => {
