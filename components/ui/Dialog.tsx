@@ -25,7 +25,12 @@ export function Dialog({ open, onClose, title, description, children, className 
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
-    const t = setTimeout(() => panel.current?.querySelector<HTMLElement>('input, textarea, select, button[data-autofocus]')?.focus(), 60)
+    // Focus the first field once the panel is in — unless the person has already clicked into one,
+    // which would otherwise yank the cursor back mid-typing.
+    const t = setTimeout(() => {
+      if (panel.current?.contains(document.activeElement)) return
+      panel.current?.querySelector<HTMLElement>('input, textarea, select, button[data-autofocus]')?.focus()
+    }, 60)
     return () => {
       clearTimeout(t)
       window.removeEventListener('keydown', onKey)
