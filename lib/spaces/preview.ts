@@ -309,7 +309,16 @@ export const previewBackend: SpacesBackend = {
     saveHosted(list.filter((s) => s.id !== id))
   },
 
-  updateSpace: noAdmin,
-  uploadBackground: noAdmin,
+  // On this device you can change the rooms you host (uploads need the backend).
+  async updateSpace(id, patch) {
+    const me = getState().accountId
+    const list = hosted()
+    const space = list.find((s) => s.id === id && s.createdBy === me)
+    if (!space) return noAdmin()
+    const next = { ...space, ...patch, updatedAt: new Date().toISOString() }
+    saveHosted(list.map((s) => (s.id === id ? next : s)))
+    return next
+  },
+  uploadBackground: () => Promise.reject(new SpaceError('forbidden', 'Uploading a background needs the PLACES backend. Pick one of the scenes instead.')),
   removeBackgroundObject: noAdmin,
 }

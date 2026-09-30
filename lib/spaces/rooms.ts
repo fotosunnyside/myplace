@@ -18,6 +18,14 @@ const FALLBACK_ART = '/districts/mindplace-banner.webp' // learning, focus, stud
 
 export const defaultArtFor = (type: RoomType) => DEFAULT_ART[type] ?? FALLBACK_ART
 
+/** PLACES scenes a host can pick for their room without uploading anything. */
+export const ROOM_SCENES: { id: string; name: string; src: string }[] = [
+  { id: 'yourplace', name: 'Sunset terrace', src: '/districts/yourplace-banner.webp' },
+  { id: 'mindplace', name: 'Garden library', src: '/districts/mindplace-banner.webp' },
+  { id: 'marketplace', name: 'Seaside market', src: '/districts/marketplace-banner.webp' },
+  { id: 'workplace', name: 'Harbor café', src: '/districts/workplace-banner.webp' },
+]
+
 export type RoomBackground =
   | { kind: 'image'; src: string; focusX: number; focusY: number; isDefault: boolean }
   | { kind: 'none' }
