@@ -334,6 +334,13 @@ test('PLACES Pass: one Pass for posting, publishing and hosting — and the menu
   await page.getByLabel('Name', { exact: true }).fill('Writers Circle')
   await page.getByRole('button', { name: 'Create my Virtual Place' }).click()
   await expect(page).toHaveURL(/yourplace\/place\/\?room=writers-circle-/)
+  // Inside your own Virtual Place you can change its scene.
+  await page.getByRole('button', { name: 'Enter Writers Circle' }).click()
+  await page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Background' }).click()
+  await page.getByRole('dialog', { name: 'Background' }).getByRole('button', { name: 'Harbor café' }).click()
+  await expect(page.getByRole('dialog', { name: 'Background' }).getByRole('button', { name: 'Harbor café' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('img[src*="workplace-banner"]').first()).toBeAttached()
+  await page.getByRole('button', { name: 'Close background' }).click()
   // Old MyPlace links still work: they lead to Virtual Places in YourPlace.
   await page.goto('myplace/')
   await expect(page).toHaveURL(/yourplace\/\?tab=places/)
@@ -382,6 +389,8 @@ test('YourPlace leads into a live space', async ({ page, context }, info) => {
   await expect(page.getByTestId('room-count')).toHaveText('1 person here')
   await expect(page.getByRole('button', { name: /^You:/ })).toBeVisible()
   await expect(page.getByTestId('media-note')).toBeVisible()
+  // Only a room's host changes its scene.
+  await expect(page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Background' })).toHaveCount(0)
 
   // Mic and camera toggle.
   const mic = page.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: /Mute|Unmute/ })

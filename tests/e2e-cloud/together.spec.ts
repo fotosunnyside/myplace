@@ -16,11 +16,13 @@ test.skip(!URL || !SERVICE || !ANON, 'Needs a running Supabase stack')
 
 const service = () => createClient(URL, SERVICE, { auth: { persistSession: false } })
 let roomId = ''
+const userIds: Record<string, string> = {}
 
 async function makeUser(name: string, pass = false) {
   const email = `${name.toLowerCase()}-together-${run}@places.test`
   const { data, error } = await service().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name, username: `${name.toLowerCase()}_t${run % 100000}` } })
   if (error) throw error
+  userIds[name] = data.user.id
   if (pass)
     await service()
       .from('member_plans')
@@ -81,6 +83,8 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
 
   const ada = await signIn(browser, await makeUser('Ada'))
   const ben = await signIn(browser, await makeUser('Ben', true))
+  // Ben hosts this Virtual Place.
+  await service().from('virtual_spaces').update({ created_by: userIds.Ben }).eq('id', roomId).throwOnError()
   await enter(ada, slug)
   await enter(ben, slug)
 
@@ -161,4 +165,17 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   await expect(ben.getByTestId('music-player')).toBeVisible()
   await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('Playing in the room', { timeout: 15_000 })
   await expect(ada.getByRole('button', { name: 'Music (playing)' })).toBeVisible()
+
+  // Ben, the host, changes the room's background from inside it; Ada sees it change. Ada can't change it.
+  await expect(ada.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Background' })).toHaveCount(0)
+  await ben.getByRole('toolbar', { name: 'Room controls' }).getByRole('button', { name: 'Background' }).click()
+  const scene = ben.getByRole('dialog', { name: 'Background' })
+  await scene.getByRole('button', { name: 'Seaside market' }).click()
+  await expect(ada.locator('img[src*="marketplace-banner"]').first()).toBeAttached({ timeout: 15_000 })
+  await scene.getByTestId('room-background-input').setInputFiles('tests/e2e/room-background.jpg')
+  await expect(scene.getByRole('button', { name: 'Your photo' })).toHaveAttribute('aria-pressed', 'true', { timeout: 15_000 })
+  await expect(ada.locator('img[src*="virtual-space-backgrounds"]').first()).toBeAttached({ timeout: 15_000 })
+  const row = await service().from('virtual_spaces').select('background_style, background_path').eq('id', roomId).single()
+  expect(row.data).toMatchObject({ background_style: 'custom' })
+  expect(row.data!.background_path).toMatch(new RegExp(`^${roomId}/`))
 })

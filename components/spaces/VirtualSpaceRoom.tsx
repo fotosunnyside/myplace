@@ -7,7 +7,7 @@ import { ChevronLeft, Compass, Info, Loader2, Timer, Users, WifiOff, X } from 'l
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DistrictIcon } from '@/components/districts/DistrictIcon'
 import { Button } from '@/components/ui/primitives'
-import { useBackendSession } from '@/lib/backend/auth'
+import { useAdminStatus, useBackendSession } from '@/lib/backend/auth'
 import { backendConfigured } from '@/lib/backend/client'
 import { layoutBubbles } from '@/lib/spaces/layout'
 import { clampSpot, ROOM_ASPECT, step, TALK_DISTANCE, type Spot } from '@/lib/spaces/proximity'
@@ -25,6 +25,7 @@ import { ParticipantBubble, type BubblePerson } from './ParticipantBubble'
 import { PersonCard } from './PersonCard'
 import { MyBubbleCard } from './MyBubbleCard'
 import { MusicPanel, MusicPlayer } from './RoomMusic'
+import { RoomBackgroundPanel } from './RoomBackgroundPanel'
 import { activePlan } from '@/lib/store/actions'
 import { useWorld } from '@/lib/store/hooks'
 import { BubbleComposer, ChatPanel, SpeechBubble, saveChatMode, savedChatMode, useFreshMessages, type ChatMode } from './RoomChat'
@@ -531,6 +532,10 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
   const [listening, setListening] = useState(false)
   const world = useWorld()
   const canPlayMusic = !!activePlan(world, 'pass') || (!!session.me && space.createdBy === session.me)
+  // The room's host (or a PLACES admin) can change its background from here; the database checks it too.
+  const admin = useAdminStatus() === 'admin'
+  const canStyle = admin || (!space.isOfficial && !!session.me && space.createdBy === session.me)
+  const [sceneOpen, setSceneOpen] = useState(false)
   const fresh = useFreshMessages(session.messages)
   // Greet once per visit, not every time you come back from another Place.
   const [welcome, setWelcome] = useState(() => Boolean(space.settings.welcome) && !greeted.has(`${space.id}:${session.me}`))
@@ -800,13 +805,18 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {sceneOpen && canStyle && (
+          <RoomBackgroundPanel space={space} onClose={() => setSceneOpen(false)} />
+        )}
+      </AnimatePresence>
       {listening && session.music && <MusicPlayer music={session.music} onClose={() => setListening(false)} />}
 
       <AnimatePresence>{chatOpen && chatMode === 'panel' && <ChatPanel messages={session.messages} me={session.me} mode={chatMode} onMode={setChatMode} onClose={closeChat} />}</AnimatePresence>
       {chatOpen && chatMode === 'bubbles' && <BubbleComposer mode={chatMode} onMode={setChatMode} onClose={closeChat} />}
 
       {/* How the room works (live media), or honest about media when it can't connect */}
-      {mediaNote && !chatOpen && !musicOpen && !(listening && session.music) && (
+      {mediaNote && !chatOpen && !musicOpen && !sceneOpen && !(listening && session.music) && (
         <div className="absolute inset-x-0 bottom-[calc(118px+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-[132px]">
           <div className="flex max-w-xl items-start gap-2.5 rounded-2xl bg-white/88 px-4 py-2.5 text-[0.78rem] leading-snug text-navy-soft shadow-soft backdrop-blur-xl" data-testid="media-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-deep" />
@@ -860,9 +870,21 @@ function InRoom({ session, space, quiet, onLeave }: { session: RoomSessionState;
             onMusic={() => {
               setMusicOpen((v) => !v)
               setChatOpen(false)
+              setSceneOpen(false)
             }}
+            backgroundOpen={sceneOpen}
+            onBackground={
+              canStyle
+                ? () => {
+                    setSceneOpen((v) => !v)
+                    setMusicOpen(false)
+                    setChatOpen(false)
+                  }
+                : undefined
+            }
             onChat={() => {
               setMusicOpen(false)
+              setSceneOpen(false)
               setChatSeenAt(Date.now())
               setChatOpen((v) => !v)
             }}

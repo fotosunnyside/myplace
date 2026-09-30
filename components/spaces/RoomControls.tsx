@@ -1,6 +1,6 @@
 'use client'
 
-import { DoorOpen, Loader2, MessageSquare, Mic, MicOff, Music2, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Image as ImageIcon, Loader2, MessageSquare, Mic, MicOff, Music2, Video, VideoOff } from 'lucide-react'
 import type { DeviceState } from '@/lib/spaces/session'
 import { cn } from '@/lib/cn'
 
@@ -34,7 +34,7 @@ function DeviceButton({ device, state, onClick }: { device: 'camera' | 'micropho
     >
       <span
         className={cn(
-          'grid h-12 w-12 place-items-center rounded-full transition duration-300 ease-gentle active:scale-95 md:h-[52px] md:w-[52px]',
+          'grid h-11 w-11 place-items-center rounded-full transition duration-300 ease-gentle active:scale-95 sm:h-12 sm:w-12 md:h-[52px] md:w-[52px]',
           on ? 'bg-white text-navy shadow-[0_10px_24px_-12px_rgb(0_0_0/0.6)]' : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25',
           problem && 'ring-2 ring-coral/80',
         )}
@@ -60,6 +60,8 @@ export function RoomControls({
   musicOn = false,
   musicOpen = false,
   onMusic,
+  backgroundOpen = false,
+  onBackground,
 }: {
   camera: DeviceState
   mic: DeviceState
@@ -73,9 +75,12 @@ export function RoomControls({
   musicOn?: boolean
   musicOpen?: boolean
   onMusic?: () => void
+  /** The room's host changes its background. */
+  backgroundOpen?: boolean
+  onBackground?: () => void
 }) {
   return (
-    <div role="toolbar" aria-label="Room controls" className="flex items-end gap-5 rounded-full bg-navy/45 px-6 py-3 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.6)] ring-1 ring-white/15 backdrop-blur-xl md:gap-7 md:px-8">
+    <div role="toolbar" aria-label="Room controls" className="flex items-end gap-2.5 rounded-full bg-navy/45 px-3 py-3 sm:gap-5 sm:px-6 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.6)] ring-1 ring-white/15 backdrop-blur-xl md:gap-7 md:px-8">
       <DeviceButton device="microphone" state={mic} onClick={onMic} />
       <DeviceButton device="camera" state={camera} onClick={onCamera} />
       {onChat && (
@@ -88,7 +93,7 @@ export function RoomControls({
         >
           <span
             className={cn(
-              'grid h-12 w-12 place-items-center rounded-full transition duration-300 ease-gentle active:scale-95 md:h-[52px] md:w-[52px]',
+              'grid h-11 w-11 place-items-center rounded-full transition duration-300 ease-gentle active:scale-95 sm:h-12 sm:w-12 md:h-[52px] md:w-[52px]',
               chatOpen ? 'bg-white text-navy shadow-[0_10px_24px_-12px_rgb(0_0_0/0.6)]' : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25',
             )}
           >
@@ -117,8 +122,22 @@ export function RoomControls({
           {musicOn && <span className="absolute right-0.5 top-0 h-2.5 w-2.5 rounded-full bg-aqua ring-2 ring-navy/40" aria-hidden />}
         </button>
       )}
+      {onBackground && (
+        <button
+          type="button"
+          onClick={onBackground}
+          aria-pressed={backgroundOpen}
+          aria-label="Background"
+          className={cn('relative flex flex-col items-center gap-1 self-center text-[0.62rem] font-medium', backgroundOpen ? 'text-white' : 'text-white/80')}
+        >
+          <span className={cn('grid h-9 w-9 place-items-center rounded-full transition active:scale-95', backgroundOpen ? 'bg-white text-navy' : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25')}>
+            <ImageIcon className="h-4 w-4" strokeWidth={1.9} />
+          </span>
+          Scene
+        </button>
+      )}
       <button type="button" onClick={onLeave} className="flex flex-col items-center gap-1 text-[0.68rem] font-medium text-white/90">
-        <span className="grid h-12 w-12 place-items-center rounded-full bg-[#e0735b] text-white shadow-[0_10px_24px_-12px_rgb(224_115_91/0.9)] transition duration-300 ease-gentle hover:bg-[#cf6048] active:scale-95 md:h-[52px] md:w-[52px]">
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-[#e0735b] sm:h-12 sm:w-12 text-white shadow-[0_10px_24px_-12px_rgb(224_115_91/0.9)] transition duration-300 ease-gentle hover:bg-[#cf6048] active:scale-95 md:h-[52px] md:w-[52px]">
           <DoorOpen className="h-[22px] w-[22px]" strokeWidth={1.9} />
         </span>
         Leave
