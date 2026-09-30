@@ -172,6 +172,7 @@ export const toggleFollow = (s: WorldState, personId: ID): WorldState => {
 export interface PostInput {
   body: string
   image?: string
+  video?: string
   link?: string
   location?: string
   pollOptions?: string[]
@@ -182,7 +183,7 @@ export function createPost(s: WorldState, input: PostInput, now: number): WorldS
   const me = need(s)
   const body = input.body.trim()
   const options = (input.pollOptions ?? []).map((o) => o.trim()).filter(Boolean)
-  if (!body && !input.image) throw new ActionError('Write something or add a photo.')
+  if (!body && !input.image && !input.video) throw new ActionError('Write something or add a photo or video.')
   if (input.pollOptions && options.length < 2) throw new ActionError('A poll needs at least two options.')
   if (input.link && !/^https?:\/\//i.test(input.link.trim())) throw new ActionError('Links should start with http:// or https://')
   const post: Post = {
@@ -190,6 +191,7 @@ export function createPost(s: WorldState, input: PostInput, now: number): WorldS
     authorId: me,
     body,
     image: input.image,
+    video: input.video,
     link: input.link?.trim() || undefined,
     location: input.location?.trim() || undefined,
     poll: options.length ? options.map((label) => ({ id: uid('opt'), label, votes: [] })) : undefined,

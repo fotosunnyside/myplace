@@ -85,6 +85,8 @@ export interface Post {
   authorId: ID
   body: string
   image?: string
+  /** A video link (hosted upload) or, on this device only, a data URL. */
+  video?: string
   link?: string
   location?: string
   poll?: PollOption[]

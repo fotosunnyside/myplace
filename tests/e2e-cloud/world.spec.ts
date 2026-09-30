@@ -69,12 +69,16 @@ test('two people share one world: posts, shops, orders, jobs, workrooms and mess
   // Rosa posts; Theo sees it live, likes and comments.
   await go(rosa.page, 'yourplace/')
   await rosa.page.getByPlaceholder("What's on your mind?").first().fill(`Hello shared world ${run}`)
+  // …with a video, uploaded to her own folder in the videos bucket.
+  await rosa.page.locator('input[aria-label="Choose a video"]').first().setInputFiles({ name: 'clip.mp4', mimeType: 'video/mp4', buffer: Buffer.from('not really a video, just bytes') })
+  await expect(rosa.page.getByLabel('Video to post')).toBeVisible()
   await rosa.page.getByRole('button', { name: 'Post', exact: true }).first().click()
   await expect(rosa.page.getByText(`Hello shared world ${run}`)).toBeVisible()
 
   await go(theo.page, 'people/?u=' + r)
   await expect(theo.page.getByText(`Hello shared world ${run}`)).toBeVisible({ timeout: 15_000 })
   const post = theo.page.locator('article', { hasText: `Hello shared world ${run}` }).first()
+  await expect(post.locator('video')).toHaveAttribute('src', /\/storage\/v1\/object\/public\/videos\//)
   await post.getByRole('button', { name: /^Like/ }).click()
   await expect(post.getByRole('button', { name: /^Like/ })).toHaveAttribute('aria-pressed', 'true')
   await post.getByRole('button', { name: /^Comments/ }).click()

@@ -170,7 +170,7 @@ describe('reading the shared world', () => {
       { user_id: 'u1', kind: 'pass', quantity: 1, status: 'active', via: 'test', since: '2026-01-01T00:00:00Z', renews_at: '2026-02-01T00:00:00Z' },
       { user_id: 'u1', kind: 'create', quantity: 2, status: 'canceled', via: 'test', since: '2026-01-01T00:00:00Z', renews_at: '2026-02-01T00:00:00Z' },
     ]
-    d.posts = [{ id: 'post_1', author_id: 'p_maya', body: 'Hi', image: null, link: null, location: null, poll: [{ id: 'o1', label: 'A' }], audience: 'public', created_at: '2026-09-29T10:00:00Z', base_likes: 5, base_comments: 0 }]
+    d.posts = [{ id: 'post_1', author_id: 'p_maya', body: 'Hi', image: null, video: 'https://x.supabase.co/storage/v1/object/public/videos/p_maya/a.mp4', link: null, location: null, poll: [{ id: 'o1', label: 'A' }], audience: 'public', created_at: '2026-09-29T10:00:00Z', base_likes: 5, base_comments: 0 }]
     d.post_likes = [{ post_id: 'post_1', user_id: 'u1' }]
     d.post_comments = [{ id: 'c1', post_id: 'post_1', author_id: 'u1', body: 'Nice', created_at: '2026-09-29T11:00:00Z' }]
     d.poll_votes = [{ post_id: 'post_1', user_id: 'u1', option_id: 'o1' }]
@@ -180,7 +180,7 @@ describe('reading the shared world', () => {
     expect(w.accountId).toBe('u1')
     expect(w.accounts[0]).toMatchObject({ email: 'ada@example.com', openTo: ['jobs'], plans: { pass: { status: 'active' }, create: { status: 'canceled', quantity: 2 } }, member: true })
     expect(w.people).toEqual([expect.objectContaining({ id: 'p_maya', member: false, baseFollowers: 3400 })])
-    expect(w.posts[0]).toMatchObject({ likes: ['u1'], baseLikes: 5, comments: [{ id: 'c1', body: 'Nice' }], poll: [{ id: 'o1', label: 'A', votes: ['u1'] }] })
+    expect(w.posts[0]).toMatchObject({ video: 'https://x.supabase.co/storage/v1/object/public/videos/p_maya/a.mp4', likes: ['u1'], baseLikes: 5, comments: [{ id: 'c1', body: 'Nice' }], poll: [{ id: 'o1', label: 'A', votes: ['u1'] }] })
     expect(w.notifications.u1).toHaveLength(1)
 
     // Reading back what was loaded produces no writes.

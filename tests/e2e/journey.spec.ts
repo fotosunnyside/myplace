@@ -25,8 +25,12 @@ test('a person can join and use every Place', async ({ page }, info) => {
 
   // YourPlace: post
   await page.getByPlaceholder("What's on your mind?").first().fill('Hello from the journey test')
+  // …with a short video
+  await page.locator('input[aria-label="Choose a video"]').first().setInputFiles({ name: 'clip.mp4', mimeType: 'video/mp4', buffer: Buffer.from('not really a video, just bytes') })
+  await expect(page.getByLabel('Video to post')).toBeVisible()
   await page.getByRole('button', { name: 'Post', exact: true }).first().click()
   await expect(page.getByText('Hello from the journey test')).toBeVisible()
+  await expect(page.locator('article', { hasText: 'Hello from the journey test' }).first().locator('video')).toHaveAttribute('src', /^data:video\/mp4/)
   await settle(page)
 
   // MindPlace: learn + reply
