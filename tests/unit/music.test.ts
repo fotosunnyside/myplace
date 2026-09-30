@@ -19,7 +19,7 @@ describe('room music', () => {
 
   it('starts everyone where the room is up to', () => {
     const url = embedUrl('jfKfPfyJRdk', '2026-09-30T10:00:00Z', Date.parse('2026-09-30T10:01:30Z'))
-    expect(url).toBe('https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?autoplay=1&playsinline=1&rel=0&start=90')
+    expect(url).toBe('https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&playsinline=1&rel=0&start=90')
   })
 
   it('suggests valid videos', () => {

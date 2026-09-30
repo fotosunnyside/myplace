@@ -37,7 +37,13 @@ interface Peer {
   pendingIce: RTCIceCandidateInit[]
   timeout: ReturnType<typeof setTimeout> | null
   speaking: boolean
+  /** Their video is shown as off only once it has stayed muted a moment (not on a network hiccup). */
+  videoOff: boolean
+  videoOffTimer: ReturnType<typeof setTimeout> | null
 }
+
+/** How long a remote camera must stay muted before its bubble falls back to the avatar. */
+const VIDEO_OFF_AFTER_MS = 1_500
 
 export class P2PMediaProvider extends DeviceMediaProvider {
   readonly name: string = 'p2p'
@@ -113,7 +119,7 @@ export class P2PMediaProvider extends DeviceMediaProvider {
 
   private newPeer(id: string, initiator: boolean): Peer {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
-    const peer: Peer = { id, pc, initiator, video: null, audio: null, videoStream: null, audioStream: null, pendingIce: [], timeout: null, speaking: false }
+    const peer: Peer = { id, pc, initiator, video: null, audio: null, videoStream: null, audioStream: null, pendingIce: [], timeout: null, speaking: false, videoOff: false, videoOffTimer: null }
     pc.onicecandidate = (e) => e.candidate && void this.send(id, 'ice', e.candidate.toJSON())
     pc.ontrack = (e) => {
       const track = e.track
@@ -121,6 +127,26 @@ export class P2PMediaProvider extends DeviceMediaProvider {
       if (track.kind === 'video') {
         peer.video = track
         peer.videoStream = new MediaStream([track])
+        peer.videoOff = track.muted
+        // A muted video track is either a camera turned off or a stall on the network. Only the first
+        // should swap the video for the avatar, so wait a moment before treating it as off.
+        track.onmute = () => {
+          if (peer.videoOffTimer) return
+          peer.videoOffTimer = setTimeout(() => {
+            peer.videoOffTimer = null
+            peer.videoOff = true
+            update()
+          }, VIDEO_OFF_AFTER_MS)
+        }
+        track.onunmute = () => {
+          if (peer.videoOffTimer) clearTimeout(peer.videoOffTimer)
+          peer.videoOffTimer = null
+          peer.videoOff = false
+          update()
+        }
+        track.onended = update
+        update()
+        return
       } else {
         peer.audio = track
         peer.audioStream = new MediaStream([track])
@@ -224,6 +250,7 @@ export class P2PMediaProvider extends DeviceMediaProvider {
     if (!peer) return
     this.peers.delete(id)
     if (peer.timeout) clearTimeout(peer.timeout)
+    if (peer.videoOffTimer) clearTimeout(peer.videoOffTimer)
     const m = this.meters.get(id)
     if (m) {
       clearInterval(m.timer)
@@ -266,10 +293,10 @@ export class P2PMediaProvider extends DeviceMediaProvider {
         identity: p.id,
         name: '',
         isLocal: false,
-        cameraOn: !!p.video && !p.video.muted && p.video.readyState === 'live',
+        cameraOn: !!p.video && !p.videoOff && p.video.readyState === 'live',
         micOn: !!p.audio && !p.audio.muted && p.audio.readyState === 'live',
         speaking: p.speaking,
-        videoStream: p.video && !p.video.muted ? p.videoStream : null,
+        videoStream: p.video && !p.videoOff ? p.videoStream : null,
         audioStream: p.audioStream,
       }))
     this.emit()

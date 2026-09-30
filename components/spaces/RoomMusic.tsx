@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ExternalLink, Music2, Square, X } from 'lucide-react'
-import { useState } from 'react'
-import { embedUrl, MORE_MUSIC_URL, MUSIC_SUGGESTIONS, youtubeId } from '@/lib/spaces/music'
+import { useMemo, useState } from 'react'
+import { embedUrl, MORE_MUSIC_URL, MUSIC_SUGGESTIONS, YOUTUBE_SIGN_IN_URL, youtubeId } from '@/lib/spaces/music'
 import type { RoomMusic } from '@/lib/spaces/types'
 import { cn } from '@/lib/cn'
 
@@ -13,6 +13,8 @@ import { cn } from '@/lib/cn'
  * so it sits small in the corner rather than hidden.
  */
 export function MusicPlayer({ music, onClose }: { music: RoomMusic; onClose: () => void }) {
+  // Worked out once per song: recomputing the start time on every render would reload the player.
+  const src = useMemo(() => embedUrl(music.videoId, music.startedAt), [music.videoId, music.startedAt])
   return (
     <div className="absolute bottom-[calc(118px+env(safe-area-inset-bottom))] left-3 z-30 w-[220px] overflow-hidden rounded-2xl bg-navy/80 text-white shadow-lift ring-1 ring-white/15 backdrop-blur-xl md:bottom-[132px] md:left-6" data-testid="music-player">
       <div className="flex items-center gap-2 px-3 py-2 text-xs">
@@ -24,7 +26,7 @@ export function MusicPlayer({ music, onClose }: { music: RoomMusic; onClose: () 
       </div>
       <iframe
         key={`${music.videoId}:${music.startedAt}`}
-        src={embedUrl(music.videoId, music.startedAt)}
+        src={src}
         title={music.title || 'Music for the room'}
         width={220}
         height={124}
@@ -109,6 +111,18 @@ export function MusicPanel({
       ) : (
         <p className="mt-2 text-sm text-navy-soft">Nothing playing yet.</p>
       )}
+
+      <a
+        href={YOUTUBE_SIGN_IN_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex items-start gap-2 rounded-2xl bg-ivory px-3 py-2 text-xs text-navy-soft hover:bg-sand"
+      >
+        <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-deep" />
+        <span>
+          <span className="font-semibold text-teal-deep">Sign in to YouTube</span> in this browser to hear it with your account. With YouTube Premium there are no ads. Each person’s own account decides their ads.
+        </span>
+      </a>
 
       {canPlay ? (
         <>

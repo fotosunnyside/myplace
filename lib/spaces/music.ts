@@ -35,8 +35,15 @@ export function youtubeId(input: string): string | null {
   return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null
 }
 
-/** The privacy-friendly embed, started where the room is up to (streams ignore the offset). */
+/**
+ * The YouTube player, started where the room is up to (streams ignore the offset).
+ * The regular youtube.com player (not the no-cookie one) so listeners signed in to YouTube Premium in
+ * their browser get it ad-free.
+ */
 export function embedUrl(videoId: string, startedAt: string, now = Date.now()): string {
   const start = Math.max(0, Math.floor((now - Date.parse(startedAt)) / 1000))
-  return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&start=${start}`
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&start=${start}`
 }
+
+/** Sign in to YouTube in a new tab; the room's player then uses that account (Premium: no ads). */
+export const YOUTUBE_SIGN_IN_URL = 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F'

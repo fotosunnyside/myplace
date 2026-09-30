@@ -478,6 +478,38 @@ describe('room session, together', () => {
     await s.leave()
   })
 
+  it('keeps talking with someone who drops out of one roster read, and lets go once they are really gone', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    try {
+      const { backend, room } = fakeBackend({ others: 1 })
+      const media = new FakeMedia()
+      const s = make(backend, media)
+      await s.enter(townHall, { name: 'Josie Rivers' }, { camera: false, mic: false })
+      await settle()
+      await settle()
+      expect(media.peers).toEqual(['o0'])
+
+      // A late heartbeat: they're missing from the next roster read, then back. The call stays up.
+      const other = room.get('o0')!
+      room.delete('o0')
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(media.peers).toEqual(['o0'])
+      room.set('o0', other)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(media.peers).toEqual(['o0'])
+
+      // Really gone: the call ends after the grace period.
+      room.delete('o0')
+      await vi.advanceTimersByTimeAsync(20_000)
+      expect(media.peers).toEqual(['o0'])
+      await vi.advanceTimersByTimeAsync(20_000)
+      expect(media.peers).toEqual([])
+      await s.leave()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('shows chat as it arrives, once each', async () => {
     const { backend, state } = fakeBackend()
     const s = make(backend, new FakeMedia())

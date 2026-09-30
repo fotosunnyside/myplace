@@ -163,6 +163,10 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   await ben.getByRole('button', { name: /^Music/ }).click()
   await ben.getByRole('dialog', { name: 'Music' }).getByRole('button', { name: /Lofi beats to study & work/ }).click()
   await expect(ben.getByTestId('music-player')).toBeVisible()
+  const player = ben.getByTestId('music-player').locator('iframe')
+  await expect(player).toHaveAttribute('src', /^https:\/\/www\.youtube\.com\/embed\/jfKfPfyJRdk\?/)
+  const playerSrc = await player.getAttribute('src')
+  await expect(ben.getByRole('link', { name: /Sign in to YouTube/ })).toHaveAttribute('href', /accounts\.google\.com/)
   await expect(ada.getByRole('dialog', { name: 'Music' })).toContainText('Playing in the room', { timeout: 15_000 })
   await expect(ada.getByRole('button', { name: 'Music (playing)' })).toBeVisible()
 
@@ -178,4 +182,7 @@ test('two people meet in a Virtual Place: walk, talk, chat and become friends', 
   const row = await service().from('virtual_spaces').select('background_style, background_path').eq('id', roomId).single()
   expect(row.data).toMatchObject({ background_style: 'custom' })
   expect(row.data!.background_path).toMatch(new RegExp(`^${roomId}/`))
+
+  // All that time the room kept updating around Ben's music, and the player never reloaded.
+  expect(await player.getAttribute('src')).toBe(playerSrc)
 })

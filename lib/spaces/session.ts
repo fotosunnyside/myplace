@@ -57,6 +57,8 @@ export interface SessionDeps {
 const IDLE: RoomSessionState = { phase: 'idle', space: null, camera: 'off', mic: 'off', roster: [], local: null, remote: [], carriesRemoteMedia: false, me: null, messages: [], nearby: [], music: null }
 const GIVE_UP_AFTER_MS = 60_000
 const ROSTER_POLL_MS = 10_000
+/** How long to keep talking with someone who briefly vanished from the roster. */
+const MISSING_GRACE_MS = 30_000
 
 const endPhase: Partial<Record<SpaceErrorCode, RoomPhase>> = { signin: 'signin', missing: 'missing', closed: 'closed', full: 'full', network: 'lost' }
 
@@ -72,6 +74,7 @@ export class RoomSession {
   private attempt = 0
   private cleanups: (() => void)[] = []
   private offlineSince: number | null = null
+  private missingSince = new Map<string, number>()
   private wantCamera = false
   private wantMic = false
   private touching: Promise<void> | null = null
@@ -292,6 +295,7 @@ export class RoomSession {
     this.cleanups.forEach((c) => c())
     this.cleanups = []
     this.offlineSince = null
+    this.missingSince.clear()
   }
 
   private syncMedia() {
@@ -357,6 +361,21 @@ export class RoomSession {
       this.state.roster.filter((p) => p.userId !== this.state.me).map((p) => ({ id: p.userId, x: p.x, y: p.y })),
       new Set(this.state.nearby),
     )
+    // Someone you're talking with can drop out of one roster read (a late heartbeat from a background
+    // tab, a slow request). Keep the call for a little while instead of hanging up and redialling.
+    const now = Date.now()
+    // If it's your own row that's missing, everyone counts as missing for the moment.
+    const present = new Set(me && me.x != null ? this.state.roster.map((p) => p.userId) : [])
+    for (const id of this.state.nearby) {
+      if (present.has(id) || ids.includes(id)) {
+        this.missingSince.delete(id)
+        continue
+      }
+      const since = this.missingSince.get(id) ?? now
+      this.missingSince.set(id, since)
+      if (now - since < MISSING_GRACE_MS) ids.push(id)
+    }
+    for (const id of [...this.missingSince.keys()]) if (present.has(id) || !ids.includes(id)) this.missingSince.delete(id)
     if (ids.join() !== this.state.nearby.join()) this.set({ nearby: ids })
     this.media?.setPeers?.(ids)
   }
